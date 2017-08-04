@@ -1,0 +1,8 @@
+.DS_Store
+.idea
+
+# Ignore all logfiles and tempfiles.
+/logs/*.log
+
+# Backup-Restore python files
+__pycache__/
