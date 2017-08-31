@@ -22,8 +22,12 @@ class BaseClient:
         self.JOB_NAME = configuration['job_name']
         self.DIRECTORY_PERSISTENT = directory_persistent
         self.DIRECTORY_WORK_LIST = directory_work_list
-        assert len(self.OPERATION) > 0, 'No operation name (backup or restore) given.'
-        assert len(self.DIRECTORY_PERSISTENT) > 0, 'Directory of the persistent volume not given.'
+        self.DIRECTORY_DATA = '/var/vcap/data'
+        self.FILE_MOUNTS = '/proc/mounts'
+        assert len(
+            self.OPERATION) > 0, 'No operation name (backup or restore) given.'
+        assert len(
+            self.DIRECTORY_PERSISTENT) > 0, 'Directory of the persistent volume not given.'
         assert len(self.DIRECTORY_WORK_LIST) > 0, 'Directory Worklist not given.'
         assert len(self.CONTAINER) > 0, 'No container given.'
         assert len(self.SECRET) > 0, 'No encryption secret given.'
@@ -36,9 +40,11 @@ class BaseClient:
 
         # Writing the last operation file
         initialize(operation_name)
-        self.LAST_OPERATION_DIRECTORY = os.getenv('SF_BACKUP_RESTORE_LAST_OPERATION_DIRECTORY')
+        self.LAST_OPERATION_DIRECTORY = os.getenv(
+            'SF_BACKUP_RESTORE_LAST_OPERATION_DIRECTORY')
         self.LOG_DIRECTORY = os.getenv('SF_BACKUP_RESTORE_LOG_DIRECTORY')
-        self.last_operation('Initializing Backup & Restore Library ...', 'processing')
+        self.last_operation(
+            'Initializing Backup & Restore Library ...', 'processing')
         self.logger = create_logger(self)
         self.output_json = dict()
         self.json_output()
@@ -56,7 +62,8 @@ class BaseClient:
 
     def __schedule_abortion(self, signum, frame):
         if self.__ABORT:
-            self.logger.info('[ABORT] REQUEST REJECTED: An abortion has already been scheduled.')
+            self.logger.info(
+                '[ABORT] REQUEST REJECTED: An abortion has already been scheduled.')
         else:
             self.logger.info('[ABORT] REQUEST ACCEPTED: Received SIGINT/SIGTERM ({}). Preparing a safe abortion...'
                              .format(signum), 'aborting')
@@ -69,12 +76,14 @@ class BaseClient:
         signal.signal(signal.SIGTERM, lambda *args: None)
 
         # Abort
-        self.logger.info('[ABORT] It is now safe to abort the execution. Triggering the clean-up...')
+        self.logger.info(
+            '[ABORT] It is now safe to abort the execution. Triggering the clean-up...')
         self.clean_up()
         self.start_service_job()
         self.wait_for_service_job_status('running')
         self.logger.info('[ABORT] Clean-up finished. Aborting now.')
-        self.last_operation('SIGINT/SIGTERM received: Abortion completed.', 'aborted')
+        self.last_operation(
+            'SIGINT/SIGTERM received: Abortion completed.', 'aborted')
         sys.exit()
 
     def __getattribute__(self, attr):
@@ -104,7 +113,7 @@ class BaseClient:
     @retry(stop_max_attempt_number=5, stop_max_delay=600000, wait_fixed=10000)
     def __retry_rescuer(self, function, args):
         try:
-            return function(*args) 
+            return function(*args)
         except Exception as error:
             self.logger.error(error)
             raise error
@@ -166,15 +175,17 @@ class BaseClient:
         """Write initial log statements and set the last operation state to 'processing'.
 
         :param message: (optional) a log statement
-        
+
         :Example:
             ::
 
                 iaas_client.initialize()
                 iaas_client.initialize('A log messages before the program begins.')
         """
-        self.logger.info('[{}] [START] (backup-type={})] Time: {}'.format(self.OPERATION.upper(), self.TYPE, time.strftime("%Y-%m-%dT%H-%M-%SZ")))
-        self.logger.info('Backup guid: {}, Name of container: {}'.format(self.GUID, self.CONTAINER))
+        self.logger.info('[{}] [START] (backup-type={})] Time: {}'.format(
+            self.OPERATION.upper(), self.TYPE, time.strftime("%Y-%m-%dT%H-%M-%SZ")))
+        self.logger.info('Backup guid: {}, Name of container: {}'.format(
+            self.GUID, self.CONTAINER))
         if message:
             self.logger.info(message)
 
@@ -182,7 +193,7 @@ class BaseClient:
         """Write final log statements and set the last operation state to 'succeeded'.
 
         :param message: (optional) a log statement
-        
+
         :Example:
             ::
 
@@ -193,9 +204,12 @@ class BaseClient:
         self.json_output()
         if message:
             self.logger.info(message)
-        self.logger.info('Backup guid: {}, Name of container: {}'.format(self.GUID, self.CONTAINER))
-        self.logger.info('[{}] [FINISH] (backup-type={})] Time: {}'.format(self.OPERATION.upper(), self.TYPE, time.strftime("%Y-%m-%dT%H-%M-%SZ")))
-        self.last_operation('{} completed successfully'.format(self.OPERATION.title()), 'succeeded')
+        self.logger.info('Backup guid: {}, Name of container: {}'.format(
+            self.GUID, self.CONTAINER))
+        self.logger.info('[{}] [FINISH] (backup-type={})] Time: {}'.format(
+            self.OPERATION.upper(), self.TYPE, time.strftime("%Y-%m-%dT%H-%M-%SZ")))
+        self.last_operation('{} completed successfully'.format(
+            self.OPERATION.title()), 'succeeded')
 
     def exit(self, message):
         """Clean up all created resources, start the service job and exit the process.
@@ -222,7 +236,8 @@ class BaseClient:
 
                 iaas_client.json_output()
         """
-        filepath = os.path.join(self.LOG_DIRECTORY, self.OPERATION + '.output.json')
+        filepath = os.path.join(
+            self.LOG_DIRECTORY, self.OPERATION + '.output.json')
         with open(filepath, 'w') as json_output_file:
             json_output_file.write(json.dumps(self.output_json))
 
@@ -239,12 +254,16 @@ class BaseClient:
                 iaas_client.last_operation('Creating Volume')
                 iaas_client.last_operation('Backup completed successfully', 'succeeded')
         """
-        SYMLINK = os.path.join(self.LAST_OPERATION_DIRECTORY, self.OPERATION + '.lastoperation.json')
-        BLUE = os.path.join(self.LAST_OPERATION_DIRECTORY, self.OPERATION + '.lastoperation.blue.json')
-        GREEN = os.path.join(self.LAST_OPERATION_DIRECTORY, self.OPERATION + '.lastoperation.green.json')
+        SYMLINK = os.path.join(self.LAST_OPERATION_DIRECTORY,
+                               self.OPERATION + '.lastoperation.json')
+        BLUE = os.path.join(self.LAST_OPERATION_DIRECTORY,
+                            self.OPERATION + '.lastoperation.blue.json')
+        GREEN = os.path.join(self.LAST_OPERATION_DIRECTORY,
+                             self.OPERATION + '.lastoperation.green.json')
 
         def read_link():
             return os.readlink(SYMLINK)
+
         def set_link(target):
             return self.shell('ln -sf {} {}'.format(target, SYMLINK), False)
 
@@ -275,11 +294,13 @@ class BaseClient:
         try:
             result = subprocess.check_output(command, shell=True).decode()
             if log_command:
-                self.logger.info('[SHELL] "{}" returned "{}".'.format(command, result))
+                self.logger.info(
+                    '[SHELL] "{}" returned "{}".'.format(command, result))
             if not result:
                 result = True
         except Exception as error:
-            self.logger.error('[SHELL ERROR] "{}" returned "{}".'.format(command, error))
+            self.logger.error(
+                '[SHELL ERROR] "{}" returned "{}".'.format(command, error))
             result = None
         return result
 
@@ -327,14 +348,16 @@ class BaseClient:
             if time.time() > timeout:
                 raise Exception('Maximum polling time exceeded.')
             if job_status == status:
-                self.logger.info('[SERVICE JOB] Job "{}" now has status "{}".'.format(self.JOB_NAME, status))
+                self.logger.info(
+                    '[SERVICE JOB] Job "{}" now has status "{}".'.format(self.JOB_NAME, status))
                 return True
             elif job_status.find('fail') != -1 or job_status.find('does not') != -1 or job_status.find('timeout') != -1:
                 self.logger.error('[SERVICE JOB] ERROR: monit status of job "{}" is "{}"'
                                   .format(self.JOB_NAME, job_status))
                 return False
             else:
-                self.logger.info('Waiting for job "{}" to have status "{}"...'.format(self.JOB_NAME, status))
+                self.logger.info(
+                    'Waiting for job "{}" to have status "{}"...'.format(self.JOB_NAME, status))
                 time.sleep(self.configuration['poll_delay_time'])
 
     def clean_up(self):
@@ -345,21 +368,27 @@ class BaseClient:
 
                 iaas_client.clean_up()
         """
-        self.logger.info('[CLEAN-UP] Begin cleaning up all created resources ...')
+        self.logger.info(
+            '[CLEAN-UP] Begin cleaning up all created resources ...')
         for device in self.__mounted_devices[:]:
-            self.logger.info('[CLEAN-UP] Unmounting device with name {}'.format(device))
+            self.logger.info(
+                '[CLEAN-UP] Unmounting device with name {}'.format(device))
             self.unmount_device(device)
         for directory in self.DIRECTORY_WORK_LIST:
-            self.logger.info('[CLEAN-UP] Removing work directory {}'.format(directory))
+            self.logger.info(
+                '[CLEAN-UP] Removing work directory {}'.format(directory))
             self.delete_directory(directory)
         for (volume_id, instance_id) in self.__volumes_attached_ids[:]:
-            self.logger.info('[CLEAN-UP] Removing attachment of volume {}'.format(volume_id))
+            self.logger.info(
+                '[CLEAN-UP] Removing attachment of volume {}'.format(volume_id))
             self.delete_attachment(volume_id, instance_id)
         for volume_id in self.__volumes_ids[:]:
-            self.logger.info('[CLEAN-UP] Removing volume with id {}'.format(volume_id))
+            self.logger.info(
+                '[CLEAN-UP] Removing volume with id {}'.format(volume_id))
             self.delete_volume(volume_id)
         for snapshot_id in self.__snapshots_ids[:]:
-            self.logger.info('[CLEAN-UP] Removing snapshot with id {}'.format(snapshot_id))
+            self.logger.info(
+                '[CLEAN-UP] Removing snapshot with id {}'.format(snapshot_id))
             self.delete_snapshot(snapshot_id)
         self.logger.info('[CLEAN-UP] ... finished.')
 
@@ -457,7 +486,8 @@ class BaseClient:
 
                 iaas_client.create_and_encrypt_tarball_of_directory('/var/vcap/store/blueprint/files', '/tmp/backup/files.tar.gz')
         """
-        self.logger.info('[ENCRYPTION] Started creating, encrypting and copying a tarball ...')
+        self.logger.info(
+            '[ENCRYPTION] Started creating, encrypting and copying a tarball ...')
         result = self.shell('tar -cpz -C {} . | gpg --symmetric --no-use-agent --cipher-algo aes256 --passphrase {} -o {}'
                             .format(directory_to_encrypt, self.SECRET, encrypted_tarball_name), False)
         self.logger.info('[ENCRYPTION] ... finished.')
@@ -476,9 +506,11 @@ class BaseClient:
         """
         if not directory_to_extract or len(directory_to_extract) == 0:
             return None
-        self.logger.info('[DECRYPTION] Started cleaning the directory\'s old contents ...')
+        self.logger.info(
+            '[DECRYPTION] Started cleaning the directory\'s old contents ...')
         if self.shell('rm -rf {}/*'.format(directory_to_extract)):
-            self.logger.info('[DECRYPTION] ... finished. Started decrypting and extracting a tarball ...')
+            self.logger.info(
+                '[DECRYPTION] ... finished. Started decrypting and extracting a tarball ...')
             result = self.shell('gpg --no-use-agent --passphrase {} -d {} | tar -xzf - -C {}/'
                                 .format(self.SECRET, encrypted_tarball_name, directory_to_extract), False)
             self.logger.info('[DECRYPTION] ... finished.')
@@ -496,7 +528,8 @@ class BaseClient:
 
                 iaas_client.create_and_encrypt_file('/var/vcap/store/blueprint/list.txt', '/tmp/backup/list.txt.enc')
         """
-        self.logger.info('[ENCRYPTION] Started encrypting and copying a file ...')
+        self.logger.info(
+            '[ENCRYPTION] Started encrypting and copying a file ...')
         result = self.shell('gpg --symmetric --no-use-agent --cipher-algo aes256 --passphrase {} -o {} {}'
                             .format(self.SECRET, encrypted_file_name, file_to_encrypt), False)
         self.logger.info('[ENCRYPTION] ... finished.')
@@ -517,13 +550,13 @@ class BaseClient:
             return None
         self.logger.info('[DECRYPTION] Started removing the old file ...')
         if self.shell('rm -f {}'.format(decrypted_file_name)):
-            self.logger.info('[DECRYPTION] ... finished. Started decrypting a file ...')
+            self.logger.info(
+                '[DECRYPTION] ... finished. Started decrypting a file ...')
             result = self.shell('gpg --no-use-agent --passphrase {} -d -o {} {}'
                                 .format(self.SECRET, decrypted_file_name, encrypted_file_name), False)
             self.logger.info('[DECRYPTION] ... finished.')
             return result
         return None
-
 
     def get_container(self):
         """Retrieve the container provided at class instantiation.
@@ -784,25 +817,32 @@ class BaseClient:
                 iaas_client.download_from_blobstore_decrypt_extract('files.tar.gz.enc', '/store/service/data')
         """
         log_prefix = '[DOWNLOAD, DECRYPT, EXTRACT]'
-        base_log = 'blob_to_download={}, blob_target_path={}, container={}'.format(blob_to_download_name, blob_download_target_path, self.CONTAINER)
+        base_log = 'blob_to_download={}, blob_target_path={}, container={}'.format(
+            blob_to_download_name, blob_download_target_path, self.CONTAINER)
 
-        segment_size = 65536 # 64 KiB
-        command='gpg --batch --cipher-algo aes256 --passphrase {} --decrypt | tar -xzf - -C {}/'.format(self.SECRET, blob_download_target_path)
+        segment_size = 65536  # 64 KiB
+        command = 'gpg --batch --cipher-algo aes256 --passphrase {} --decrypt | tar -xzf - -C {}/'.format(
+            self.SECRET, blob_download_target_path)
 
         if self.__retry(self.get_container, []):
             try:
-                self.logger.info('{} Started to download, decryt, extract and copy backup to {}.'.format(log_prefix, blob_download_target_path))
-                process = subprocess.Popen(command, stdin=subprocess.PIPE, shell=True, bufsize=segment_size, universal_newlines=False)
+                self.logger.info('{} Started to download, decryt, extract and copy backup to {}.'.format(
+                    log_prefix, blob_download_target_path))
+                process = subprocess.Popen(
+                    command, stdin=subprocess.PIPE, shell=True, bufsize=segment_size, universal_newlines=False)
                 args = [process, blob_to_download_name, segment_size]
-                self.__retry(self._download_from_blobstore_and_pipe_to_process, args)
+                self.__retry(
+                    self._download_from_blobstore_and_pipe_to_process, args)
                 process.stdin.close()
                 exitcode = process.wait(timeout=None)
                 if exitcode != 0:
-                    raise Exception('Worker subprocess for decryption and extracting returned with non zero exit code.')
+                    raise Exception(
+                        'Worker subprocess for decryption and extracting returned with non zero exit code.')
 
                 self.logger.info('{} SUCCESS: {}'.format(log_prefix, base_log))
                 return True
             except Exception as error:
-                message = '{} Error: {}\n{}'.format(log_prefix, base_log, error)
+                message = '{} Error: {}\n{}'.format(
+                    log_prefix, base_log, error)
                 self.logger.error(error)
                 raise Exception(error)
