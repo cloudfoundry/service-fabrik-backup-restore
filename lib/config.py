@@ -4,7 +4,7 @@ from .utils.merge_dict import merge_dict
 from .logger import init_logger
 
 parameters = {
-    'iaas': 'the underlying IaaS provider [possible values: aws/openstack/boshlite]',
+    'iaas': 'the underlying IaaS provider [possible values: aws/azure/openstack/boshlite]',
     'type': 'online or offline backup [possible values: online/offline]'
 }
 
@@ -13,6 +13,15 @@ parameters_credentials = {
         'access_key_id': 'AWS Access Key ID',
         'secret_access_key': 'AWS Secret Access Key',
         'region_name': 'AWS Region Name'
+    },
+    'azure': {
+        'subscription_id': 'Azure subscription id',
+        'resource_group': 'Azure resource group name in subscription',
+        'client_id': 'Azure Active Directory Application client id',
+        'client_secret': 'Azure Active Directory Application Secret',
+        'tenant_id': 'Azure Active Directory tenant id',
+        'storageAccount': 'Azure storage account name',
+        'storageAccessKey': 'Azure storage account key'
     },
     'openstack': {
         'tenant_id': 'OpenStack Tenant-ID the VM is deployed in',
@@ -65,13 +74,16 @@ def parse_options(type):
 
             configuration = parse_options('backup')
     """
-    parser = ArgumentParser()
+    # TODO: conflict_handler='resolve' is really required ??
+    parser = ArgumentParser(conflict_handler='resolve')
     if type == 'backup':
         for name, description in _get_parameters_backup().items():
-            parser.add_argument('--{}'.format(name), help=description, required=True)
+            parser.add_argument('--{}'.format(name),
+                                help=description, required=True)
     elif type == 'restore':
         for name, description in _get_parameters_restore().items():
-            parser.add_argument('--{}'.format(name), help=description, required=True)
+            parser.add_argument('--{}'.format(name),
+                                help=description, required=True)
     else:
         raise Exception('Use either \'backup\' or \'restore\' as type.')
 
@@ -80,13 +92,14 @@ def parse_options(type):
             parser.add_argument('--{}'.format(name), help=description)
     configuration = vars(parser.parse_args())
     assert configuration['type'] == 'online' or configuration['type'] == 'offline', \
-           '--type must be \'online\' or \'offline\''
+        '--type must be \'online\' or \'offline\''
     return configuration
 
 
 def initialize(operation_name):
     directory_logfile = os.getenv('SF_BACKUP_RESTORE_LOG_DIRECTORY')
-    directory_last_operation = os.getenv('SF_BACKUP_RESTORE_LAST_OPERATION_DIRECTORY')
+    directory_last_operation = os.getenv(
+        'SF_BACKUP_RESTORE_LAST_OPERATION_DIRECTORY')
 
     # Verify that the required environment variables are provided
     assert directory_logfile is not None, 'SF_BACKUP_RESTORE_LOG_DIRECTORY environment variable is not set.'
@@ -96,9 +109,12 @@ def initialize(operation_name):
     for operation in ['backup', 'restore']:
         # +-> Define paths for log and last operation file
         path_log = os.path.join(directory_logfile, operation + '.log')
-        path_blue = os.path.join(directory_last_operation, operation + '.lastoperation.blue.json')
-        path_green = os.path.join(directory_last_operation, operation + '.lastoperation.green.json')
-        path_link = os.path.join(directory_last_operation, operation + '.lastoperation.json')
+        path_blue = os.path.join(
+            directory_last_operation, operation + '.lastoperation.blue.json')
+        path_green = os.path.join(
+            directory_last_operation, operation + '.lastoperation.green.json')
+        path_link = os.path.join(
+            directory_last_operation, operation + '.lastoperation.json')
         # +-> Create .log file if it does not exist
         if not os.path.exists(path_log):
             open(path_log, 'w+').close()
