@@ -6,6 +6,7 @@ import os
 import sys
 import time
 import types
+import random
 from retrying import retry
 from ..logger import create_logger
 from ..config import initialize
@@ -24,6 +25,7 @@ class BaseClient:
         self.DIRECTORY_WORK_LIST = directory_work_list
         self.DIRECTORY_DATA = '/var/vcap/data'
         self.FILE_MOUNTS = '/proc/mounts'
+        self.DEVICE_PATH_TEMPLATE = '/sys/bus/scsi/devices/{}:*:*:{}/block'
         assert len(
             self.OPERATION) > 0, 'No operation name (backup or restore) given.'
         assert len(
@@ -846,3 +848,8 @@ class BaseClient:
                     log_prefix, base_log, error)
                 self.logger.error(error)
                 raise Exception(error)
+
+    def generate_name_by_prefix(self, prefix):
+        return '{}-{}-{}'.format(prefix,
+                                 random.randrange(10000, 99999),
+                                 time.strftime("%Y%m%d%H%M%S"))
