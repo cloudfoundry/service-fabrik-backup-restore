@@ -267,7 +267,7 @@ class AzureClient(BaseClient):
                     self.resource_group,
                     disk_name,
                     {
-                        'location': snapshot.location,
+                        'location': self.instance_location,
                         'disk_size_gb': size,
                         'creation_data': {
                             'create_option': DiskCreateOption.empty
