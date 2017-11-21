@@ -19,6 +19,7 @@ class AwsClient(BaseClient):
         self.ec2.client = self.create_ec2_client()
         self.s3 = self.create_s3_resource()
         self.s3.client = self.create_s3_client()
+        self.tags= [{'Key':'instance_id','Value':self.INSTANCE_ID},{'Key':'job_name','Value':self.JOB_NAME}]
 
         # +-> Check whether the given container exists
         self.container = self.get_container()
@@ -134,7 +135,7 @@ class AwsClient(BaseClient):
     def _create_snapshot(self, volume_id):
         log_prefix = '[SNAPSHOT] [CREATE]'
         snapshot = None
-        self.logger.info('{} START for volume id {}'.format(log_prefix, volume_id))
+        self.logger.info('{} START for volume id {} with tags {}'.format(log_prefix, volume_id, self.tags))
         try:
             snapshot = self.ec2.create_snapshot(
                 VolumeId=volume_id,
@@ -148,9 +149,17 @@ class AwsClient(BaseClient):
 
             snapshot = Snapshot(snapshot.id, snapshot.volume_size, snapshot.state)
             self._add_snapshot(snapshot.id)
-            self.logger.info('{} SUCCESS: snapshot-id={}, volume-id={}'.format(log_prefix, snapshot.id, volume_id))
+
+            self.ec2.create_tags(
+                Resources=[
+                    snapshot.id
+                ],
+                Tags= self.tags
+            )
+
+            self.logger.info('{} SUCCESS: snapshot-id={}, volume-id={} with tags {}'.format(log_prefix, snapshot.id, volume_id, self.tags))
         except Exception as error:
-            message = '{} ERROR: volume-id={}\n{}'.format(log_prefix, volume_id, error)
+            message = '{} ERROR: volume-id={} and tags={}\n{}'.format(log_prefix, volume_id, self.tags, error)
             self.logger.error(message)
             if snapshot:
                 self.delete_snapshot(snapshot.id)
@@ -180,6 +189,14 @@ class AwsClient(BaseClient):
             snapshot = Snapshot(new_snapshot.id, new_snapshot.volume_size, new_snapshot.state)
             self.logger.info('{} SUCCESS: snapshot-id={}, unencrypted-snapshot_id={}'.format(log_prefix, snapshot.id, snapshot_id))
             self.output_json['snapshotId'] = snapshot.id
+
+            self.ec2.create_tags(
+                Resources=[
+                    snapshot.id
+                ],
+                Tags= self.tags
+            )
+
         except Exception as error:
             message = '{} ERROR: snapshot-id={}\n{}'.format(log_prefix, snapshot_id, error)
             self.logger.error(message)
@@ -235,7 +252,15 @@ class AwsClient(BaseClient):
 
             volume = Volume(volume.id, 'none', volume.size)
             self._add_volume(volume.id)
-            self.logger.info('{} SUCCESS: volume-id={}'.format(log_prefix, volume.id))
+
+            self.ec2.create_tags(
+                Resources=[
+                    volume.id
+                ],
+                Tags= self.tags
+            )
+
+            self.logger.info('{} SUCCESS: volume-id={} with tags = {} '.format(log_prefix, volume.id, self.tags))
         except Exception as error:
             message = '{} ERROR: size={}\n{}'.format(log_prefix, size, error)
             self.logger.error(message)

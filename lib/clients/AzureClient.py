@@ -48,6 +48,7 @@ class AzureClient(BaseClient):
             self.last_operation(msg, 'failed')
             raise Exception(msg)
         self.instance_location = None
+        self.tags= {'instance_id' :self.INSTANCE_ID , 'job_name' :self.JOB_NAME}
 
     def get_container(self):
         try:
@@ -181,6 +182,7 @@ class AzureClient(BaseClient):
                 snapshot_name,
                 {
                     'location': disk_info.location,
+                    'tags': self.tags,
                     'creation_data': {
                         'create_option': DiskCreateOption.copy,
                         'source_uri': disk_info.id
@@ -255,6 +257,7 @@ class AzureClient(BaseClient):
                     disk_name,
                     {
                         'location': self.instance_location,
+                        'tags': self.tags,
                         'creation_data': {
                             'create_option': DiskCreateOption.copy,
                             'source_uri': snapshot.id
@@ -268,6 +271,7 @@ class AzureClient(BaseClient):
                     disk_name,
                     {
                         'location': self.instance_location,
+                        'tags': self.tags,
                         'disk_size_gb': size,
                         'creation_data': {
                             'create_option': DiskCreateOption.empty
