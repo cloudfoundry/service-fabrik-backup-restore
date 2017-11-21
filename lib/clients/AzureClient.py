@@ -172,7 +172,7 @@ class AzureClient(BaseClient):
         log_prefix = '[SNAPSHOT] [CREATE]'
         snapshot = None
         self.logger.info(
-            '{} START for volume id {}'.format(log_prefix, volume_id))
+            '{} START for volume id {} with tags {}'.format(log_prefix, volume_id, self.tags))
         try:
             disk_info = self.compute_client.disks.get(
                 self.resource_group, volume_id)
@@ -202,7 +202,7 @@ class AzureClient(BaseClient):
                 snapshot_info.name, snapshot_info.disk_size_gb, snapshot_info.provisioning_state)
             self._add_snapshot(snapshot.id)
             self.logger.info(
-                '{} SUCCESS: snapshot-id={}, volume-id={}'.format(log_prefix, snapshot.id, volume_id))
+                '{} SUCCESS: snapshot-id={}, volume-id={} , tags={} '.format(log_prefix, snapshot.id, volume_id, self.tags))
             self.output_json['snapshotId'] = snapshot.id
         except Exception as error:
             message = '{} ERROR: volume-id={}\n{}'.format(
@@ -289,7 +289,7 @@ class AzureClient(BaseClient):
             volume = Volume(disk.name, 'none', disk.disk_size_gb)
             self._add_volume(volume.id)
             self.logger.info(
-                '{} SUCCESS: volume-id={}'.format(log_prefix, volume.id))
+                '{} SUCCESS: volume-id={} with tags={} '.format(log_prefix, volume.id, self.tags))
         except Exception as error:
             message = '{} ERROR: size={}\n{}'.format(log_prefix, size, error)
             self.logger.error(message)
@@ -314,8 +314,8 @@ class AzureClient(BaseClient):
             delete_response = disk_deletion_operation.result()
             self._remove_volume(volume_id)
             self.logger.info(
-                '{} SUCCESS: volume-id={}\n{}'.format(
-                    log_prefix, volume_id, delete_response))
+                '{} SUCCESS: volume-id={} with tags={}\n{}'.format(
+                    log_prefix, volume_id, self.tags, delete_response))
             return True
         except Exception as error:
             message = '{} ERROR: volume-id={}\n{}'.format(
