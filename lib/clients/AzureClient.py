@@ -48,6 +48,7 @@ class AzureClient(BaseClient):
             self.last_operation(msg, 'failed')
             raise Exception(msg)
         self.instance_location = None
+        self.tags= {'instance_id' :self.INSTANCE_ID , 'job_name' :self.JOB_NAME}
 
     def get_container(self):
         try:
@@ -171,7 +172,7 @@ class AzureClient(BaseClient):
         log_prefix = '[SNAPSHOT] [CREATE]'
         snapshot = None
         self.logger.info(
-            '{} START for volume id {}'.format(log_prefix, volume_id))
+            '{} START for volume id {} with tags {}'.format(log_prefix, volume_id, self.tags))
         try:
             disk_info = self.compute_client.disks.get(
                 self.resource_group, volume_id)
@@ -181,6 +182,7 @@ class AzureClient(BaseClient):
                 snapshot_name,
                 {
                     'location': disk_info.location,
+                    'tags': self.tags,
                     'creation_data': {
                         'create_option': DiskCreateOption.copy,
                         'source_uri': disk_info.id
@@ -200,7 +202,7 @@ class AzureClient(BaseClient):
                 snapshot_info.name, snapshot_info.disk_size_gb, snapshot_info.provisioning_state)
             self._add_snapshot(snapshot.id)
             self.logger.info(
-                '{} SUCCESS: snapshot-id={}, volume-id={}'.format(log_prefix, snapshot.id, volume_id))
+                '{} SUCCESS: snapshot-id={}, volume-id={} , tags={} '.format(log_prefix, snapshot.id, volume_id, self.tags))
             self.output_json['snapshotId'] = snapshot.id
         except Exception as error:
             message = '{} ERROR: volume-id={}\n{}'.format(
@@ -255,6 +257,7 @@ class AzureClient(BaseClient):
                     disk_name,
                     {
                         'location': self.instance_location,
+                        'tags': self.tags,
                         'creation_data': {
                             'create_option': DiskCreateOption.copy,
                             'source_uri': snapshot.id
@@ -268,6 +271,7 @@ class AzureClient(BaseClient):
                     disk_name,
                     {
                         'location': self.instance_location,
+                        'tags': self.tags,
                         'disk_size_gb': size,
                         'creation_data': {
                             'create_option': DiskCreateOption.empty
@@ -285,7 +289,7 @@ class AzureClient(BaseClient):
             volume = Volume(disk.name, 'none', disk.disk_size_gb)
             self._add_volume(volume.id)
             self.logger.info(
-                '{} SUCCESS: volume-id={}'.format(log_prefix, volume.id))
+                '{} SUCCESS: volume-id={} with tags={} '.format(log_prefix, volume.id, self.tags))
         except Exception as error:
             message = '{} ERROR: size={}\n{}'.format(log_prefix, size, error)
             self.logger.error(message)
@@ -310,8 +314,8 @@ class AzureClient(BaseClient):
             delete_response = disk_deletion_operation.result()
             self._remove_volume(volume_id)
             self.logger.info(
-                '{} SUCCESS: volume-id={}\n{}'.format(
-                    log_prefix, volume_id, delete_response))
+                '{} SUCCESS: volume-id={} with tags={}\n{}'.format(
+                    log_prefix, volume_id, self.tags, delete_response))
             return True
         except Exception as error:
             message = '{} ERROR: volume-id={}\n{}'.format(

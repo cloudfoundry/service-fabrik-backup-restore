@@ -21,6 +21,7 @@ class BaseClient:
         self.SECRET = configuration['secret']
         self.TYPE = configuration['type']
         self.JOB_NAME = configuration['job_name']
+        self.INSTANCE_ID = configuration['instance_id']
         self.DIRECTORY_PERSISTENT = directory_persistent
         self.DIRECTORY_WORK_LIST = directory_work_list
         self.DIRECTORY_DATA = '/var/vcap/data'
