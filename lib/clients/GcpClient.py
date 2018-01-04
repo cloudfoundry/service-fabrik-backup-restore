@@ -31,7 +31,8 @@ class GcpClient(BaseClient):
         self.storage_client = self.create_storage_client()
         
         # +-> Check whether the given container exists and is accessible
-        if (not self.get_container()) or (not self.access_container()):
+        self.container = self.get_container()
+        if not self.container:
             msg = 'Could not find or access the given container.'
             self.last_operation(msg, 'failed')
             raise Exception(msg)
@@ -85,26 +86,16 @@ class GcpClient(BaseClient):
     def get_container(self):
         try:
             container = self.storage_client.get_bucket(self.CONTAINER)
+            # Test if the container is accessible
+            blob = Blob('AccessTestByServiceFabrikPythonLibrary', container)
+            blob.upload_from_string('Sample Message for AccessTestByServiceFabrikPythonLibrary', content_type='text/plain')
+            blob.delete()
             return container
         except Exception as error:
-            self.logger.error('[GCP] [STORAGE] ERROR: Unable to find container {}.\n{}'.format(
+            self.logger.error('[GCP] [STORAGE] ERROR: Unable to find or access container {}.\n{}'.format(
                 self.CONTAINER, error))
             return None
 
-    def access_container(self):
-        # Test if the container is accessible
-        try:
-            bucket = self.storage_client.get_bucket(self.CONTAINER)
-            blob = Blob('AccessTestByServiceFabrikPythonLibrary', bucket)
-            blob.upload_from_string('Sample Message for AccessTestByServiceFabrikPythonLibrary', content_type='text/plain')
-            blob.delete()
-            return True
-        except Exception as error:
-            self.logger.error('[GCP] [STORAGE] ERROR: Unable to access/delete container {}.\n{}'.format(
-                self.CONTAINER, error))
-            return False
-    
-    
     def get_snapshot(self, snapshot_name):
         try:
             snapshot = self.compute_client.snapshots().get(project=self.project_id, snapshot=snapshot_name).execute()
@@ -213,6 +204,67 @@ class GcpClient(BaseClient):
                 log_prefix, snapshot_id, error)
             self.logger.error(message)
             raise Exception(message)
+
+    def _create_volume(self, size, snapshot_id=None):
+        # TODO
+        pass
+
+    def _delete_volume(self, volume_id):
+        # TODO
+        pass        
+
+    def _create_attachment(self, volume_id, instance_id):
+        # TODO
+        pass
+
+    def _delete_attachment(self, volume_id, instance_id):
+        # TODO
+        pass
+
+    def _find_volume_device(self, volume_id):
+        # Nothing to do for AWS as the device name is specified manually while attaching a volume and therefore known
+        pass
+
+    def get_mountpoint(self, volume_id, partition=None):
+        # TODO
+        pass
+
+    def _upload_to_blobstore(self, blob_to_upload_path, blob_target_name, chunk_size=None):
+        """Upload file to blobstore.
+        :type chunk_size: int
+        :param chunk_size: If file size if greater than 5MB, it is recommended that, 
+                           resumable uploads should be used.
+                           If you wish to use resumable upload, pass chunk_size param to this function.
+                           This must be a multiple of 256 KB per the API specification.
+        """
+        log_prefix = '[Google Cloud Storage] [UPLOAD]'
+
+        if self.container:
+            self.logger.info('{} Started to upload the tarball to the object storage.'.format(log_prefix))
+            try:
+                blob = Blob(blob_target_name, self.container, chunk_size=chunk_size)
+                blob.upload_from_filename(blob_to_upload_path)
+                self.logger.info('{} SUCCESS: blob_to_upload={}, blob_target_name={}, container={}'
+                                 .format(log_prefix, blob_to_upload_path, blob_target_name, self.CONTAINER))
+                return True
+            except Exception as error:
+                message = '{} ERROR: blob_to_upload={}, blob_target_name={}, container={}\n{}'.format(log_prefix,
+                          blob_to_upload_path, blob_target_name, self.CONTAINER, error)
+                self.logger.error(message)
+                raise Exception(message)
+        else:
+                message = '{} ERROR: blob_to_upload={}, blob_target_name={}, container={}\n{}'.format(log_prefix,
+                          blob_to_upload_path, blob_target_name, self.CONTAINER, "Container not found or accessible")
+                self.logger.error(message)
+                raise Exception(message)
+
+    def _download_from_blobstore(self, blob_to_download_name, blob_download_target_path):
+        # TODO
+        pass
+
+    def _download_from_blobstore_and_pipe_to_process(self, process, blob_to_download_name, segment_size):
+        # TODO
+        pass
 
     def wait_for_operation(self, operation_id, zonal_operation):
         if zonal_operation:
