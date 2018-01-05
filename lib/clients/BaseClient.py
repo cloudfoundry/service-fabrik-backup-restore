@@ -141,7 +141,8 @@ class BaseClient:
         self.__snapshots_ids.append(snapshot_id)
 
     def _remove_snapshot(self, snapshot_id):
-        self.__snapshots_ids.remove(snapshot_id)
+        if snapshot_id in self.__snapshots_ids:
+            self.__snapshots_ids.remove(snapshot_id)
 
     def _add_volume(self, volume_id):
         self.__volumes_ids.append(volume_id)
