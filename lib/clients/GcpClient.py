@@ -137,17 +137,30 @@ class GcpClient(BaseClient):
     def get_http_error_code(self, error):
         return json.loads(error.content)['error']['code']
 
-    '''
     def get_volume(self, volume_name):
         try:
-            volume = compute_client.disks().get(project=project, zone=zone, disk=volume_name).execute()
+            volume = self.compute_client.disks().get(
+                project=self.project_id, zone=self.availability_zone, disk=volume_name).execute()
             return Volume(volume['name'], volume['status'], volume['sizeGb'])
         except Exception as error:
             self.logger.error(
                 '[GCP] ERROR: Unable to get volume/disk {}.\n{}'.format(
-                volume_name, error))
+                    volume_name, error))
             return None
-    '''
+
+    def volume_exists(self, volume_name):
+        try:
+            volume = self.compute_client.disks().get(
+                project=self.project_id, zone=self.availability_zone, disk=volume_name).execute()
+            return True
+        except Exception as error:
+            if self.get_http_error_code(error) == 404:
+                return False
+            else:
+                message = '[GCP] ERROR: Unable to get disk {}.\n{}'.format(
+                    volume_name, error)
+                self.logger.error(message)
+                raise Exception(message)
 
     def get_attached_volumes_for_instance(self, instance_id):
         try:
@@ -159,32 +172,22 @@ class GcpClient(BaseClient):
 
             volume_list = []
             for disk in instance['disks']:
-                # As per https://cloud.google.com/compute/docs/reference/latest/instances/attachDisk
-                # deviceName a unique device name of your choice that is reflected into the
-                # /dev/disk/by-id/google-* tree of a Linux operating system running within the instance.
-                device = None
-                device_path = glob.glob(
-                    self.device_path_template.format(disk['deviceName']))
-                if len(device_path) != 1:
-                    raise Exception(
-                        'Expected number of device path not matching 1 != {} for disk {}'.format(
-                            len(device_path), disk['deviceName']))
+                device = self._find_volume_device(disk['deviceName'])
 
-                device = self.shell(
-                    'readlink -e {}'.format(device_path[0])).rstrip()
+                if device is not None:
+                    # Assuming the last part of the url is disk-name
+                    # Also, from https://cloud.google.com/compute/docs/regions-zones/
+                    # the disk and instance must belong to the same zone.
+                    # So, we can use instance zone.
+                    disk_name = disk['source'].rsplit('/', 1)[1]
+                    disk_details = self.compute_client.disks().get(
+                        project=self.project_id,
+                        zone=self.availability_zone,
+                        disk=disk_name
+                    ).execute()
+                    volume_list.append(
+                        Volume(disk_details['name'], disk_details['status'], disk_details['sizeGb'], device))
 
-                # Assuming the last part of the url is disk-name
-                # Also, from https://cloud.google.com/compute/docs/regions-zones/
-                # the disk and instance must belong to the same zone.
-                # So, we can use instance zone.
-                disk_name = disk['source'].rsplit('/', 1)[1]
-                disk_details = self.compute_client.disks().get(
-                    project=self.project_id,
-                    zone=self.availability_zone,
-                    disk=disk_name
-                ).execute()
-                volume_list.append(
-                    Volume(disk_details['name'], disk_details['status'], disk_details['sizeGb'], device))
             return volume_list
         except Exception as error:
             self.logger.error(
@@ -281,28 +284,196 @@ class GcpClient(BaseClient):
             raise Exception(message)
 
     def _create_volume(self, size, snapshot_id=None):
-        # TODO
-        pass
+        log_prefix = '[VOLUME] [CREATE]'
+        volume = None
+
+        try:
+            disk_name = self.generate_name_by_prefix(self.disk_prefix)
+            disk_body = {
+                'name': disk_name,
+                'sizeGb': size,
+                'labels': self.tags
+                # default typ is pd-standard
+            }
+            if snapshot_id:
+                disk_body['sourceSnapshot'] = 'global/snapshots/{}'.format(
+                    snapshot_id)
+
+            self.logger.info('Creating disk with details {}'.format(disk_body))
+
+            disk_creation_operation = self.compute_client.disks().insert(
+                project=self.project_id, zone=self.availability_zone, body=disk_body).execute()
+
+            self._wait('Waiting for volume {} to get ready...'.format(disk_name),
+                       (lambda operation_id, zonal_operation: self.wait_for_operation(
+                           operation_id, zonal_operation) == 'DONE'),
+                       None,
+                       disk_creation_operation['name'], True)
+
+            volume = self.get_volume(disk_name)
+            self._add_volume(volume.id)
+
+            self.logger.info(
+                '{} SUCCESS: volume-id={} with tags = {} '.format(log_prefix, volume.id, self.tags))
+        except Exception as error:
+            message = '{} ERROR: volume-id={}, size={}\n{}'.format(
+                log_prefix, disk_name, size, error)
+            self.logger.error(message)
+            self.delete_volume(disk_name)
+            volume = None
+            raise Exception(message)
+
+        return volume
 
     def _delete_volume(self, volume_id):
-        # TODO
-        pass
+        log_prefix = '[VOLUME] [DELETE]'
+
+        try:
+            disk_deletion_operation = self.compute_client.disks().delete(
+                project=self.project_id, zone=self.availability_zone, disk=volume_id).execute()
+
+            self._wait('Waiting for disk {} to be deleted...'.format(volume_id),
+                       (lambda operation_id, zonal_operation: self.wait_for_operation(
+                           operation_id, zonal_operation) == 'DONE'),
+                       None,
+                       disk_deletion_operation['name'], True)
+
+            volume_exists = self.volume_exists(volume_id)
+
+            # Check if volume exists, if not then it is successfully deleted, else raise exception
+            if not volume_exists:
+                self._remove_volume(volume_id)
+                self.logger.info(
+                    '{} SUCCESS: volume-id={}'.format(
+                        log_prefix, volume_id))
+                return True
+            else:
+                message = '{} ERROR: volume-id={}, volume still exists'.format(
+                    log_prefix, volume_id)
+                self.logger.error(message)
+                raise Exception(message)
+        except Exception as error:
+            message = '{} ERROR: volume-id={}\n{}'.format(
+                log_prefix, volume_id, error)
+            self.logger.error(message)
+            raise Exception(message)
 
     def _create_attachment(self, volume_id, instance_id):
-        # TODO
-        pass
+        log_prefix = '[ATTACHMENT] [CREATE]'
+        attachment = None
+
+        try:
+            volume = self.compute_client.disks().get(
+                project=self.project_id, zone=self.availability_zone, disk=volume_id).execute()
+            attached_disk_body = {
+                'source': volume['selfLink'],
+                'deviceName': volume_id
+                # type: the default is PERSISTENT
+            }
+
+            disk_attach_operation = self.compute_client.instances().attachDisk(
+                project=self.project_id, zone=self.availability_zone, instance=instance_id, body=attached_disk_body).execute()
+
+            self._wait('Waiting for attachment of volume {} to get ready...'.format(volume_id),
+                       (lambda operation_id, zonal_operation: self.wait_for_operation(
+                           operation_id, zonal_operation) == 'DONE'),
+                       None,
+                       disk_attach_operation['name'], True)
+
+            # Here volume_id is the device name.
+            # Raise exception if device returned in None,
+            # as it might mean that disk was not attached properly
+            device = self._find_volume_device(volume_id)
+            if device is not None:
+                self.logger.info(
+                    'Attached volume-id={}, device={}'.format(volume_id, device))
+                self._add_volume_device(volume_id, device)
+            else:
+                raise Exception()
+
+            attachment = Attachment(0, volume_id, instance_id)
+            self._add_attachment(volume_id, instance_id)
+            self.logger.info(
+                '{} SUCCESS: volume-id={}, instance-id={}'.format(
+                    log_prefix, volume_id, instance_id))
+        except Exception as error:
+            message = '{} ERROR: volume-id={}, instance-id={}\n{}'.format(
+                log_prefix, volume_id, instance_id, error)
+            self.logger.error(message)
+
+            # The following lines are a workaround in case of inconsistency:
+            # The attachment process may end with throwing an Exception,
+            # but the attachment has been successful. Therefore, we must
+            # check whether the volume is attached and if yes, trigger the detachment
+            volume = self.compute_client.disks().get(
+                project=self.project_id, zone=self.availability_zone, disk=volume_id).execute()
+            if 'users' in volume and len(volume['users']) > 0:
+                self.logger.warning('[VOLUME] [DELETE] Volume is attached although the attaching process failed, '
+                                    'triggering detachment')
+                attachment = True
+
+            if attachment:
+                self.delete_attachment(volume_id, instance_id)
+                attachment = None
+            raise Exception(message)
+
+        return attachment
 
     def _delete_attachment(self, volume_id, instance_id):
-        # TODO
-        pass
+        log_prefix = '[ATTACHMENT] [DELETE]'
+
+        try:
+            disk_detach_operation = self.compute_client.instances().detachDisk(
+                project=self.project_id, zone=self.availability_zone, instance=instance_id, deviceName=volume_id).execute()
+
+            self._wait('Waiting for attachment of volume {} to be deleted...'.format(volume_id),
+                       (lambda operation_id, zonal_operation: self.wait_for_operation(
+                           operation_id, zonal_operation) == 'DONE'),
+                       None,
+                       disk_detach_operation['name'], True)
+
+            self._remove_volume_device(volume_id)
+            self._remove_attachment(volume_id, instance_id)
+            self.logger.info(
+                '{} SUCCESS: volume-id={}, instance-id={}'.format(log_prefix, volume_id, instance_id))
+            return True
+        except Exception as error:
+            message = '{} ERROR: volume-id={}, instance-id={}\n{}'.format(
+                log_prefix, volume_id, instance_id, error)
+            self.logger.error(message)
+            raise Exception(message)
 
     def _find_volume_device(self, volume_id):
-        # Nothing to do for AWS as the device name is specified manually while attaching a volume and therefore known
-        pass
+        # As per https://cloud.google.com/compute/docs/reference/latest/instances/attachDisk
+        # deviceName a unique device name of your choice that is reflected into the
+        # /dev/disk/by-id/google-* tree of a Linux operating system running within the instance.
+        # Here, volume_id parameter is actually a deviceName for GCP.
+        try:
+            device = None
+            device_path = glob.glob(
+                self.device_path_template.format(volume_id))
+            if len(device_path) != 1:
+                raise Exception(
+                    'Expected number of device path not matching 1 != {} for disk {}'.format(
+                        len(device_path), volume_id))
+
+            device = self.shell(
+                'readlink -e {}'.format(device_path[0])).rstrip()
+            return device
+        except Exception as error:
+            self.logger.error(
+                '[GCP] ERROR: Unable to find device for attached volume {}.{}'.format(
+                    volume_id, error))
+            return None
+
 
     def get_mountpoint(self, volume_id, partition=None):
-        # TODO
-        pass
+        device = self._get_device_of_volume(volume_id)
+        if not device:
+            return None
+        if partition:
+            device += partition
+        return device
 
     def _upload_to_blobstore(self, blob_to_upload_path, blob_target_name, chunk_size=None):
         """Upload file to blobstore.
@@ -335,13 +506,36 @@ class GcpClient(BaseClient):
             self.logger.error(message)
             raise Exception(message)
 
-    def _download_from_blobstore(self, blob_to_download_name, blob_download_target_path):
-        # TODO
-        pass
+    def _download_from_blobstore(self, blob_to_download_name, blob_download_target_path, chunk_size=None):
+        log_prefix = '[Google Cloud Storage] [DOWNLOAD]'
 
+        if self.container:
+            self.logger.info('{} Started to download the tarball to target.'.format(log_prefix,
+                                                                                    blob_download_target_path))
+            try:
+                blob = Blob(blob_to_download_name,
+                            self.container, chunk_size=chunk_size)
+                blob.download_to_filename(blob_download_target_path)
+                self.logger.info('{} SUCCESS: blob_to_download={}, blob_target_name={}, container={}'
+                                 .format(log_prefix, blob_to_download_name, self.CONTAINER,
+                                         blob_download_target_path))
+                return True
+            except Exception as error:
+                message = '{} ERROR: blob_to_download={}, blob_target_name={}, container={}\n{}'.format(log_prefix,
+                                                                                                        blob_to_download_name, blob_download_target_path, self.CONTAINER, error)
+                self.logger.error(message)
+                raise Exception(message)
+        else:
+            message = '{} ERROR: blob_to_download={}, blob_target_name={}, container={}\n{}'.format(log_prefix,
+                                                                                                    blob_to_download_name, blob_download_target_path, self.CONTAINER, "Container not found or accessible")
+            self.logger.error(message)
+            raise Exception(message)
+
+    '''
     def _download_from_blobstore_and_pipe_to_process(self, process, blob_to_download_name, segment_size):
-        # TODO
+        # TODO Currently not used for GCP. Implement if needed.
         pass
+    '''
 
     def wait_for_operation(self, operation_id, zonal_operation):
         if zonal_operation:

@@ -135,7 +135,8 @@ class BaseClient:
         self.__devices[volume_id] = device
 
     def _remove_volume_device(self, volume_id):
-        self.__devices.pop(volume_id, None)
+        if volume_id in self.__devices:
+            self.__devices.pop(volume_id, None)
 
     def _add_snapshot(self, snapshot_id):
         self.__snapshots_ids.append(snapshot_id)
@@ -148,13 +149,15 @@ class BaseClient:
         self.__volumes_ids.append(volume_id)
 
     def _remove_volume(self, volume_id):
-        self.__volumes_ids.remove(volume_id)
+        if volume_id in self.__volumes_ids:
+            self.__volumes_ids.remove(volume_id)
 
     def _add_attachment(self, volume_id, instance_id):
         self.__volumes_attached_ids.append((volume_id, instance_id))
 
     def _remove_attachment(self, volume_id, instance_id):
-        self.__volumes_attached_ids.remove((volume_id, instance_id))
+        if volume_id in self.__volumes_attached_ids:
+            self.__volumes_attached_ids.remove((volume_id, instance_id))
 
     def _add_mounted_device(self, device):
         self.__mounted_devices.append(device)
