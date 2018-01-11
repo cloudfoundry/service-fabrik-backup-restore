@@ -135,7 +135,7 @@ class GcpClient(BaseClient):
                 raise Exception(message)
 
     def get_http_error_code(self, error):
-        return json.loads(error.content)['error']['code']
+        return json.loads(error.content.decode('utf-8'))['error']['code']
 
     def get_volume(self, volume_name):
         try:
