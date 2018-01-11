@@ -10,7 +10,6 @@ from ..models.Attachment import Attachment
 import json
 import glob
 
-
 class GcpClient(BaseClient):
     def __init__(self, operation_name, configuration, directory_persistent, directory_work_list, poll_delay_time,
                  poll_maximum_time):
@@ -466,7 +465,6 @@ class GcpClient(BaseClient):
                     volume_id, error))
             return None
 
-
     def get_mountpoint(self, volume_id, partition=None):
         device = self._get_device_of_volume(volume_id)
         if not device:
@@ -496,22 +494,29 @@ class GcpClient(BaseClient):
                                  .format(log_prefix, blob_to_upload_path, blob_target_name, self.CONTAINER))
                 return True
             except Exception as error:
-                message = '{} ERROR: blob_to_upload={}, blob_target_name={}, container={}\n{}'.format(log_prefix,
-                                                                                                      blob_to_upload_path, blob_target_name, self.CONTAINER, error)
+                message = '{} ERROR: blob_to_upload={}, blob_target_name={}, container={}\n{}'.format(
+                    log_prefix, blob_to_upload_path, blob_target_name, self.CONTAINER, error)
                 self.logger.error(message)
                 raise Exception(message)
         else:
-            message = '{} ERROR: blob_to_upload={}, blob_target_name={}, container={}\n{}'.format(log_prefix,
-                                                                                                  blob_to_upload_path, blob_target_name, self.CONTAINER, "Container not found or accessible")
+            message = '{} ERROR: blob_to_upload={}, blob_target_name={}, container={}\n{}'.format(
+                log_prefix, blob_to_upload_path, blob_target_name, self.CONTAINER, "Container not found or accessible")
             self.logger.error(message)
             raise Exception(message)
 
     def _download_from_blobstore(self, blob_to_download_name, blob_download_target_path, chunk_size=None):
+        """Download file from blobstore.
+        :type chunk_size: int
+        :param chunk_size: If file size if greater than 5MB, it is recommended that, 
+                           chunked downloads should be used.
+                           To do so, pass chunk_size param to this function.
+                           This must be a multiple of 256 KB per the API specification.
+        """
         log_prefix = '[Google Cloud Storage] [DOWNLOAD]'
 
         if self.container:
-            self.logger.info('{} Started to download the tarball to target.'.format(log_prefix,
-                                                                                    blob_download_target_path))
+            self.logger.info('{} Started to download the tarball to target.'.format(
+                log_prefix, blob_download_target_path))
             try:
                 blob = Blob(blob_to_download_name,
                             self.container, chunk_size=chunk_size)
@@ -521,13 +526,13 @@ class GcpClient(BaseClient):
                                          blob_download_target_path))
                 return True
             except Exception as error:
-                message = '{} ERROR: blob_to_download={}, blob_target_name={}, container={}\n{}'.format(log_prefix,
-                                                                                                        blob_to_download_name, blob_download_target_path, self.CONTAINER, error)
+                message = '{} ERROR: blob_to_download={}, blob_target_name={}, container={}\n{}'.format(
+                    log_prefix, blob_to_download_name, blob_download_target_path, self.CONTAINER, error)
                 self.logger.error(message)
                 raise Exception(message)
         else:
-            message = '{} ERROR: blob_to_download={}, blob_target_name={}, container={}\n{}'.format(log_prefix,
-                                                                                                    blob_to_download_name, blob_download_target_path, self.CONTAINER, "Container not found or accessible")
+            message = '{} ERROR: blob_to_download={}, blob_target_name={}, container={}\n{}'.format(
+                log_prefix, blob_to_download_name, blob_download_target_path, self.CONTAINER, "Container not found or accessible")
             self.logger.error(message)
             raise Exception(message)
 
