@@ -432,7 +432,7 @@ class BaseClient:
         """
         return self.shell('cp -r {} {}'.format(source, dest))
 
-    def format_device(self, device):
+    def format_device(self, device, filesystem='ext4'):
         """Create an ext4 filesystem on a volume identified by its device name.
 
         :param device: the device name of the volume
@@ -443,9 +443,9 @@ class BaseClient:
                 mountpoint_volume = iaas_client.get_mountpoint(volume.id)
                 iaas_client.format_device(mountpoint_volume)
         """
-        return self.shell('mkfs.ext4 {}'.format(device))
+        return self.shell('mkfs.{} {}'.format(filesystem, device))
 
-    def mount_device(self, device, directory):
+    def mount_device(self, device, directory, filesystem='ext4'):
         """Mount a volume to the filesystem.
 
         :param device: the device name of the volume
@@ -457,7 +457,7 @@ class BaseClient:
                 mountpoint_volume = iaas_client.get_mountpoint(volume.id)
                 iaas_client.mount_device(mountpoint_volume, '/tmp/backup')
         """
-        cmd = self.shell('mount -t ext4 {} {}'.format(device, directory))
+        cmd = self.shell('mount -t {} {} {}'.format(filesystem, device, directory))
         if cmd:
             self._add_mounted_device(device)
         return cmd
