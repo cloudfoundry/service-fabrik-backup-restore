@@ -76,9 +76,7 @@ class GcpClient(BaseClient):
             while request is not None:
                 response = request.execute()
                 for zone, instances_scoped_list in response['items'].items():
-                    if 'warning' in instances_scoped_list:
-                        pass
-                    elif 'instances' in instances_scoped_list:
+                    if 'instances' in instances_scoped_list:
                         for instance in instances_scoped_list['instances']:
                             if instance['name'] == instance_id:
                                 # Assuming the last part of the url is zone-name
@@ -226,7 +224,7 @@ class GcpClient(BaseClient):
                 project=self.project_id, zone=self.availability_zone, disk=volume_id, body=snapshot_body).execute()
 
             self._wait('Waiting for snapshot {} to get ready...'.format(snapshot_name),
-                       (lambda operation_id, zonal_operation: self.wait_for_operation(
+                       (lambda operation_id, zonal_operation: self.get_operation_status(
                            operation_id, zonal_operation) == 'DONE'),
                        None,
                        snapshot_creation_operation['name'], True)
@@ -257,7 +255,7 @@ class GcpClient(BaseClient):
                 project=self.project_id, snapshot=snapshot_id).execute()
 
             self._wait('Waiting for snapshot {} to be deleted...'.format(snapshot_id),
-                       (lambda operation_id, zonal_operation: self.wait_for_operation(
+                       (lambda operation_id, zonal_operation: self.get_operation_status(
                            operation_id, zonal_operation) == 'DONE'),
                        None,
                        snapshot_deletion_operation['name'], False)
@@ -304,7 +302,7 @@ class GcpClient(BaseClient):
                 project=self.project_id, zone=self.availability_zone, body=disk_body).execute()
 
             self._wait('Waiting for volume {} to get ready...'.format(disk_name),
-                       (lambda operation_id, zonal_operation: self.wait_for_operation(
+                       (lambda operation_id, zonal_operation: self.get_operation_status(
                            operation_id, zonal_operation) == 'DONE'),
                        None,
                        disk_creation_operation['name'], True)
@@ -332,7 +330,7 @@ class GcpClient(BaseClient):
                 project=self.project_id, zone=self.availability_zone, disk=volume_id).execute()
 
             self._wait('Waiting for disk {} to be deleted...'.format(volume_id),
-                       (lambda operation_id, zonal_operation: self.wait_for_operation(
+                       (lambda operation_id, zonal_operation: self.get_operation_status(
                            operation_id, zonal_operation) == 'DONE'),
                        None,
                        disk_deletion_operation['name'], True)
@@ -374,7 +372,7 @@ class GcpClient(BaseClient):
                 project=self.project_id, zone=self.availability_zone, instance=instance_id, body=attached_disk_body).execute()
 
             self._wait('Waiting for attachment of volume {} to get ready...'.format(volume_id),
-                       (lambda operation_id, zonal_operation: self.wait_for_operation(
+                       (lambda operation_id, zonal_operation: self.get_operation_status(
                            operation_id, zonal_operation) == 'DONE'),
                        None,
                        disk_attach_operation['name'], True)
@@ -426,7 +424,7 @@ class GcpClient(BaseClient):
                 project=self.project_id, zone=self.availability_zone, instance=instance_id, deviceName=volume_id).execute()
 
             self._wait('Waiting for attachment of volume {} to be deleted...'.format(volume_id),
-                       (lambda operation_id, zonal_operation: self.wait_for_operation(
+                       (lambda operation_id, zonal_operation: self.get_operation_status(
                            operation_id, zonal_operation) == 'DONE'),
                        None,
                        disk_detach_operation['name'], True)
@@ -542,7 +540,7 @@ class GcpClient(BaseClient):
         pass
     '''
 
-    def wait_for_operation(self, operation_id, zonal_operation):
+    def get_operation_status(self, operation_id, zonal_operation):
         if zonal_operation:
             result = self.compute_client.zoneOperations().get(
                 project=self.project_id,
