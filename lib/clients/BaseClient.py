@@ -135,8 +135,7 @@ class BaseClient:
         self.__devices[volume_id] = device
 
     def _remove_volume_device(self, volume_id):
-        if volume_id in self.__devices:
-            self.__devices.pop(volume_id, None)
+        self.__devices.pop(volume_id, None)
 
     def _add_snapshot(self, snapshot_id):
         self.__snapshots_ids.append(snapshot_id)
