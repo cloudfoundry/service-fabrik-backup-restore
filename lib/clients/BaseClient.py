@@ -456,8 +456,14 @@ class BaseClient:
 
                 mountpoint_volume = iaas_client.get_mountpoint(volume.id)
                 iaas_client.mount_device(mountpoint_volume, '/tmp/backup')
+
+        XFS doesn't allow multiple volumes to be mounted with the same UUID.
+        Since it's a volume created from the snapshot, the UUID doesn't change, hence the "nouuid" option
         """
-        cmd = self.shell('mount -t {} {} {}'.format(filesystem, device, directory))
+        if filesystem == "xfs":
+          cmd = self.shell('mount -o nouuid -t {} {} {}'.format(filesystem, device, directory))
+        else:
+          cmd = self.shell('mount -t {} {} {}'.format(filesystem, device, directory))
         if cmd:
             self._add_mounted_device(device)
         return cmd
