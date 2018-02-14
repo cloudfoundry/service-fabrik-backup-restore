@@ -132,14 +132,14 @@ class AwsClient(BaseClient):
         return None
 
 
-    def _create_snapshot(self, volume_id):
+    def _create_snapshot(self, volume_id, description='Service-Fabrik: Automated backup'):
         log_prefix = '[SNAPSHOT] [CREATE]'
         snapshot = None
         self.logger.info('{} START for volume id {} with tags {}'.format(log_prefix, volume_id, self.tags))
         try:
             snapshot = self.ec2.create_snapshot(
                 VolumeId=volume_id,
-                Description='Service-Fabrik: Automated backup'
+                Description=description
             )
 
             self._wait('Waiting for snapshot {} to get ready...'.format(snapshot.id),
