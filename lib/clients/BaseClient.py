@@ -27,6 +27,8 @@ class BaseClient:
         self.DIRECTORY_DATA = '/var/vcap/data'
         self.FILE_MOUNTS = '/proc/mounts'
         self.DEVICE_PATH_TEMPLATE = '/sys/bus/scsi/devices/{}:*:*:{}/block'
+        self.SNAPSHOT_PREFIX = 'sf-snapshot'
+        self.DISK_PREFIX = 'sf-disk'
         assert len(
             self.OPERATION) > 0, 'No operation name (backup or restore) given.'
         assert len(

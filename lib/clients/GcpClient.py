@@ -1,4 +1,3 @@
-from .BaseClient import BaseClient
 from googleapiclient import discovery
 from google.oauth2 import service_account
 from google.cloud import storage
@@ -25,10 +24,9 @@ class GcpClient(BaseClient):
 
         self.compute_api_name = 'compute'
         self.compute_api_version = 'v1'
-        self.snapshot_prefix = 'sf-snapshot'
-        self.disk_prefix = 'sf-disk'
         self.device_path_template = '/dev/disk/by-id/google-{}'
 
+        # +-> Create compute and storage clients
         self.compute_client = self.create_compute_client()
         self.storage_client = self.create_storage_client()
 
@@ -211,8 +209,9 @@ class GcpClient(BaseClient):
     def _create_snapshot(self, volume_id):
         log_prefix = '[SNAPSHOT] [CREATE]'
         snapshot = None
+        snapshot_creation_operation = None
+        snapshot_name = self.generate_name_by_prefix(self.SNAPSHOT_PREFIX)
         try:
-            snapshot_name = self.generate_name_by_prefix(self.snapshot_prefix)
             snapshot_body = {
                 'name': snapshot_name,
                 'labels': self.tags,
@@ -230,16 +229,21 @@ class GcpClient(BaseClient):
                        snapshot_creation_operation['name'], True)
 
             snapshot = self.get_snapshot(snapshot_name)
-            self._add_snapshot(snapshot.id)
-            self.logger.info('{} SUCCESS: snapshot-id={}, volume-id={} with tags {}'.format(
-                log_prefix, snapshot.id, volume_id, self.tags))
-
+            if snapshot.status == 'READY':
+                self._add_snapshot(snapshot.id)
+                self.logger.info('{} SUCCESS: snapshot-id={}, volume-id={}, status={} with tags {}'.format(
+                    log_prefix, snapshot.id, volume_id, snapshot.status, self.tags))
+            else:
+                message = '{} ERROR: snapshot-id={} status={}'.format(
+                    log_prefix, snapshot_name, snapshot.status)
+                raise Exception(message)
         except Exception as error:
             message = '{} ERROR: volume-id={} and tags={}\n{}'.format(
                 log_prefix, volume_id, self.tags, error)
             self.logger.error(message)
-            self.delete_snapshot(snapshot_name)
-            snapshot = None
+            if snapshot or snapshot_creation_operation: 
+                self.delete_snapshot(snapshot_name)
+                snapshot = None
             raise Exception(message)
 
         return snapshot
@@ -249,7 +253,6 @@ class GcpClient(BaseClient):
 
     def _delete_snapshot(self, snapshot_id):
         log_prefix = '[SNAPSHOT] [DELETE]'
-
         try:
             snapshot_deletion_operation = self.compute_client.snapshots().delete(
                 project=self.project_id, snapshot=snapshot_id).execute()
@@ -283,9 +286,9 @@ class GcpClient(BaseClient):
     def _create_volume(self, size, snapshot_id=None):
         log_prefix = '[VOLUME] [CREATE]'
         volume = None
-
+        disk_creation_operation = None
+        disk_name = self.generate_name_by_prefix(self.DISK_PREFIX)
         try:
-            disk_name = self.generate_name_by_prefix(self.disk_prefix)
             disk_body = {
                 'name': disk_name,
                 'sizeGb': size,
@@ -308,23 +311,28 @@ class GcpClient(BaseClient):
                        disk_creation_operation['name'], True)
 
             volume = self.get_volume(disk_name)
-            self._add_volume(volume.id)
 
-            self.logger.info(
-                '{} SUCCESS: volume-id={} with tags = {} '.format(log_prefix, volume.id, self.tags))
+            if volume.status == 'READY':
+                self._add_volume(volume.id)
+                self.logger.info('{} SUCCESS: volume-id={}, status={} with tags = {} '.format(
+                    log_prefix, volume.id, volume.status, self.tags))
+            else:
+                message = '{} ERROR: volume-id={} status={}'.format(
+                    log_prefix, volume.id, volume.status)
+                raise Exception(message)           
         except Exception as error:
             message = '{} ERROR: volume-id={}, size={}\n{}'.format(
                 log_prefix, disk_name, size, error)
             self.logger.error(message)
-            self.delete_volume(disk_name)
-            volume = None
+            if volume or disk_creation_operation: 
+                self.delete_volume(disk_name)
+                volume = None
             raise Exception(message)
 
         return volume
 
     def _delete_volume(self, volume_id):
         log_prefix = '[VOLUME] [DELETE]'
-
         try:
             disk_deletion_operation = self.compute_client.disks().delete(
                 project=self.project_id, zone=self.availability_zone, disk=volume_id).execute()
@@ -357,8 +365,7 @@ class GcpClient(BaseClient):
 
     def _create_attachment(self, volume_id, instance_id):
         log_prefix = '[ATTACHMENT] [CREATE]'
-        attachment = None
-
+        attachment = None       
         try:
             volume = self.compute_client.disks().get(
                 project=self.project_id, zone=self.availability_zone, disk=volume_id).execute()
@@ -386,7 +393,9 @@ class GcpClient(BaseClient):
                     'Attached volume-id={}, device={}'.format(volume_id, device))
                 self._add_volume_device(volume_id, device)
             else:
-                raise Exception()
+                message = '{} ERROR: Device returned for volume-id={} is None'.format(
+                    log_prefix, volume_id)
+                raise Exception(message)
 
             attachment = Attachment(0, volume_id, instance_id)
             self._add_attachment(volume_id, instance_id)
@@ -408,7 +417,6 @@ class GcpClient(BaseClient):
                 self.logger.warning('[VOLUME] [DELETE] Volume is attached although the attaching process failed, '
                                     'triggering detachment')
                 attachment = True
-
             if attachment:
                 self.delete_attachment(volume_id, instance_id)
                 attachment = None
@@ -418,7 +426,6 @@ class GcpClient(BaseClient):
 
     def _delete_attachment(self, volume_id, instance_id):
         log_prefix = '[ATTACHMENT] [DELETE]'
-
         try:
             disk_detach_operation = self.compute_client.instances().detachDisk(
                 project=self.project_id, zone=self.availability_zone, instance=instance_id, deviceName=volume_id).execute()
@@ -480,7 +487,6 @@ class GcpClient(BaseClient):
                            This must be a multiple of 256 KB per the API specification.
         """
         log_prefix = '[Google Cloud Storage] [UPLOAD]'
-
         if self.container:
             self.logger.info(
                 '{} Started to upload the tarball to the object storage.'.format(log_prefix))
@@ -511,7 +517,6 @@ class GcpClient(BaseClient):
                            This must be a multiple of 256 KB per the API specification.
         """
         log_prefix = '[Google Cloud Storage] [DOWNLOAD]'
-
         if self.container:
             self.logger.info('{} Started to download the tarball to target.'.format(
                 log_prefix, blob_download_target_path))
@@ -534,20 +539,47 @@ class GcpClient(BaseClient):
             self.logger.error(message)
             raise Exception(message)
 
-    '''
-    def _download_from_blobstore_and_pipe_to_process(self, process, blob_to_download_name, segment_size):
-        # TODO Currently not used for GCP. Implement if needed.
-        pass
-    '''
-
     def get_operation_status(self, operation_id, zonal_operation):
-        if zonal_operation:
-            result = self.compute_client.zoneOperations().get(
-                project=self.project_id,
-                zone=self.availability_zone,
-                operation=operation_id).execute()
-        else:
-            result = self.compute_client.globalOperations().get(
-                project=self.project_id,
-                operation=operation_id).execute()
-        return result['status']
+        """Get the operations status.
+        The function returns the status of the operation and it can take values as PENDING, RUNNING, or DONE.
+        Even after the operation status is returned as DONE, 
+        one should check to see if the operation was successful and whether there were any errors.
+        It throws an exception if there is any error.
+        https://cloud.google.com/compute/docs/api/how-tos/api-requests-responses
+
+        :type operation_id: string
+        :param operation_id: The operation_id for the operation to be polled.
+
+        :type zonal_operation: boolean
+        :param zonal_operation: If the original request was to mutate a zonal resource, 
+                                like an instance or a disk, Compute Engine returns a zoneOperations object. 
+                                Similarly, regional and global resources return a regionOperations and globalOperations object.
+                                We currently perform only zonal / global operation.
+                                Pass zonal_operation = True if it is zonal operation,
+                                else it is considered as global operation.
+        """
+        result = None
+        try:
+            if zonal_operation:
+                result = self.compute_client.zoneOperations().get(
+                    project=self.project_id,
+                    zone=self.availability_zone,
+                    operation=operation_id).execute()
+            else:
+                result = self.compute_client.globalOperations().get(
+                    project=self.project_id,
+                    operation=operation_id).execute()
+        except Exception as error:
+                message = '[Google Cloud Storage] [GET_OPERATION] ERROR: operation id={}\n{}'.format(
+                    operation_id, error)
+                self.logger.error(message)
+                raise Exception(message)
+
+        if result['status'] == 'DONE':
+            if 'error' in result:
+                message = '[Google Cloud Storage] [GET_OPERATION] ERROR: operation id={}\n{}'.format(
+                    operation_id, result['error'])
+                self.logger.error(message)
+                raise Exception(message)
+
+        return result if result == None else result['status']

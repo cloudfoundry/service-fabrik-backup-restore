@@ -38,8 +38,6 @@ class AzureClient(BaseClient):
             self.last_operation(msg, 'failed')
             raise Exception(msg)
 
-        self.snapshot_prefix = 'sf-snapshot'
-        self.disk_prefix = 'sf-disk'
         # scsi_host_number would be used to determine lun to device mapping
         # scsi_host_number would be same for all data volumes/disks
         self.scsi_host_number = self.get_host_number_of_data_volumes()
@@ -176,7 +174,7 @@ class AzureClient(BaseClient):
         try:
             disk_info = self.compute_client.disks.get(
                 self.resource_group, volume_id)
-            snapshot_name = self.generate_name_by_prefix(self.snapshot_prefix)
+            snapshot_name = self.generate_name_by_prefix(self.SNAPSHOT_PREFIX)
             snapshot_creation_operation = self.compute_client.snapshots.create_or_update(
                 self.resource_group,
                 snapshot_name,
@@ -251,7 +249,7 @@ class AzureClient(BaseClient):
             if snapshot_id is not None:
                 snapshot = self.compute_client.snapshots.get(
                     self.resource_group, snapshot_id)
-                disk_name = self.generate_name_by_prefix(self.disk_prefix)
+                disk_name = self.generate_name_by_prefix(self.DISK_PREFIX)
                 disk_creation_operation = self.compute_client.disks.create_or_update(
                     self.resource_group,
                     disk_name,
@@ -265,7 +263,7 @@ class AzureClient(BaseClient):
                     }
                 )
             else:
-                disk_name = self.generate_name_by_prefix(self.disk_prefix)
+                disk_name = self.generate_name_by_prefix(self.DISK_PREFIX)
                 disk_creation_operation = self.compute_client.disks.create_or_update(
                     self.resource_group,
                     disk_name,
