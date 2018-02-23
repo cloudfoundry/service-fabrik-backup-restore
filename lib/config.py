@@ -4,7 +4,7 @@ from .utils.merge_dict import merge_dict
 from .logger import init_logger
 
 parameters = {
-    'iaas': 'the underlying IaaS provider [possible values: aws/azure/openstack/boshlite]',
+    'iaas': 'the underlying IaaS provider [possible values: aws/azure/gcp/openstack/boshlite]',
     'type': 'online or offline backup [possible values: online/offline]'
 }
 
@@ -22,6 +22,10 @@ parameters_credentials = {
         'tenant_id': 'Azure Active Directory tenant id',
         'storageAccount': 'Azure storage account name',
         'storageAccessKey': 'Azure storage account key'
+    },
+    'gcp': {
+        'projectId': 'GCP Project id',
+        'credentials': 'GCP Service Account Details'
     },
     'openstack': {
         'tenant_id': 'OpenStack Tenant-ID the VM is deployed in',
