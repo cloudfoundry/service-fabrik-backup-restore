@@ -470,14 +470,16 @@ class AzureClient(BaseClient):
             self.logger.error(message)
             raise Exception(message)
 
-    def _download_from_blobstore(self, blob_to_download_name, blob_download_target_path):
+    def _download_from_blobstore(self, blob_to_download_name, blob_download_target_path, max_connections=2):
         log_prefix = '[AZURE STORAGE CONTAINER] [DOWNLOAD]'
         self.logger.info('{} Started to download the tarball to target {}.'.format(
             log_prefix,
             blob_download_target_path))
         try:
+            self.block_blob_service.MAX_BLOCK_SIZE = 100 * 1024 * 1024
             self.block_blob_service.get_blob_to_path(
-                self.CONTAINER, blob_to_download_name, blob_download_target_path)
+                self.CONTAINER, blob_to_download_name, blob_download_target_path,
+                max_connections=max_connections)
             self.logger.info('{} SUCCESS: blob_to_download={}, blob_target_name={}, container={}'
                              .format(log_prefix, blob_to_download_name, self.CONTAINER,
                                      blob_download_target_path))
