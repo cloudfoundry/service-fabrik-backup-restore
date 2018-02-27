@@ -18,6 +18,7 @@ class GcpClient(BaseClient):
         self.__gcpCredentials = json.loads(configuration['credentials'])
         self.project_id = configuration['projectId']
         self.tags = {
+            'created_by': 'service-fabrik-backup-restore',
             'instance_id': self.INSTANCE_ID,
             'job_name': self.JOB_NAME
         }

@@ -46,7 +46,11 @@ class AzureClient(BaseClient):
             self.last_operation(msg, 'failed')
             raise Exception(msg)
         self.instance_location = None
-        self.tags= {'instance_id' :self.INSTANCE_ID , 'job_name' :self.JOB_NAME}
+        self.tags= {
+                'created_by': 'service-fabrik-backup-restore',
+                'instance_id' :self.INSTANCE_ID ,
+                'job_name' :self.JOB_NAME
+                }
 
     def get_container(self):
         try:
