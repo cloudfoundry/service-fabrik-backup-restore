@@ -19,12 +19,7 @@ class AwsClient(BaseClient):
         self.ec2.client = self.create_ec2_client()
         self.s3 = self.create_s3_resource()
         self.s3.client = self.create_s3_client()
-        self.tags= [
-                {'Key':'created_by','Value':'service-fabrik-backup-restore'},
-                {'Key':'instance_id','Value':self.INSTANCE_ID},
-                {'Key':'job_name','Value':self.JOB_NAME}
-                ]
-
+        self.formated_tags= self.format_tags()
         # +-> Check whether the given container exists
         self.container = self.get_container()
         if not self.container:
@@ -39,6 +34,8 @@ class AwsClient(BaseClient):
             self.last_operation(msg, 'failed')
             raise Exception(msg)
 
+    def format_tags(self):
+        return [ {'Key': key, 'Value': value} for key, value in self.tags.items() ]
 
     def create_aws_session(self):
         return boto3.Session(
@@ -139,7 +136,7 @@ class AwsClient(BaseClient):
     def _create_snapshot(self, volume_id, description='Service-Fabrik: Automated backup'):
         log_prefix = '[SNAPSHOT] [CREATE]'
         snapshot = None
-        self.logger.info('{} START for volume id {} with tags {}'.format(log_prefix, volume_id, self.tags))
+        self.logger.info('{} START for volume id {} with tags {}'.format(log_prefix, volume_id, self.formated_tags))
         try:
             snapshot = self.ec2.create_snapshot(
                 VolumeId=volume_id,
@@ -158,12 +155,12 @@ class AwsClient(BaseClient):
                 Resources=[
                     snapshot.id
                 ],
-                Tags= self.tags
+                Tags= self.formated_tags
             )
 
-            self.logger.info('{} SUCCESS: snapshot-id={}, volume-id={} with tags {}'.format(log_prefix, snapshot.id, volume_id, self.tags))
+            self.logger.info('{} SUCCESS: snapshot-id={}, volume-id={} with tags {}'.format(log_prefix, snapshot.id, volume_id, self.formated_tags))
         except Exception as error:
-            message = '{} ERROR: volume-id={} and tags={}\n{}'.format(log_prefix, volume_id, self.tags, error)
+            message = '{} ERROR: volume-id={} and tags={}\n{}'.format(log_prefix, volume_id, self.formated_tags, error)
             self.logger.error(message)
             if snapshot:
                 self.delete_snapshot(snapshot.id)
@@ -198,7 +195,7 @@ class AwsClient(BaseClient):
                 Resources=[
                     snapshot.id
                 ],
-                Tags= self.tags
+                Tags= self.formated_tags
             )
 
         except Exception as error:
@@ -261,10 +258,10 @@ class AwsClient(BaseClient):
                 Resources=[
                     volume.id
                 ],
-                Tags= self.tags
+                Tags= self.formated_tags
             )
 
-            self.logger.info('{} SUCCESS: volume-id={} with tags = {} '.format(log_prefix, volume.id, self.tags))
+            self.logger.info('{} SUCCESS: volume-id={} with tags = {} '.format(log_prefix, volume.id, self.formated_tags))
         except Exception as error:
             message = '{} ERROR: size={}\n{}'.format(log_prefix, size, error)
             self.logger.error(message)

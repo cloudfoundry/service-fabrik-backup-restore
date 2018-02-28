@@ -29,6 +29,11 @@ class BaseClient:
         self.DEVICE_PATH_TEMPLATE = '/sys/bus/scsi/devices/{}:*:*:{}/block'
         self.SNAPSHOT_PREFIX = 'sf-snapshot'
         self.DISK_PREFIX = 'sf-disk'
+        self.tags = {
+                'created_by': 'service-fabrik-backup-restore',
+                'instance_id' :self.INSTANCE_ID ,
+                'job_name' :self.JOB_NAME
+                }
         assert len(
             self.OPERATION) > 0, 'No operation name (backup or restore) given.'
         assert len(
