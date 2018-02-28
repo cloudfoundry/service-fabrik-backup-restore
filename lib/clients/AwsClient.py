@@ -19,7 +19,11 @@ class AwsClient(BaseClient):
         self.ec2.client = self.create_ec2_client()
         self.s3 = self.create_s3_resource()
         self.s3.client = self.create_s3_client()
-        self.tags= [{'Key':'instance_id','Value':self.INSTANCE_ID},{'Key':'job_name','Value':self.JOB_NAME}]
+        self.tags= [
+                {'Key':'created_by','Value':'service-fabrik-backup-restore'},
+                {'Key':'instance_id','Value':self.INSTANCE_ID},
+                {'Key':'job_name','Value':self.JOB_NAME}
+                ]
 
         # +-> Check whether the given container exists
         self.container = self.get_container()

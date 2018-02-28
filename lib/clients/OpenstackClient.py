@@ -214,6 +214,9 @@ class OpenstackClient(BaseClient):
         try:
             kwargs = {
                 'size': size,
+                'metadata': {
+                    'created_by': 'service-fabrik-backup-restore'
+                    },
                 'availability_zone': self.availability_zone
             }
             if snapshot_id:
