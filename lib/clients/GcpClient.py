@@ -232,6 +232,7 @@ class GcpClient(BaseClient):
             snapshot = self.get_snapshot(snapshot_name)
             if snapshot.status == 'READY':
                 self._add_snapshot(snapshot.id)
+                self.output_json['snapshotId'] = snapshot.id
                 self.logger.info('{} SUCCESS: snapshot-id={}, volume-id={}, status={} with tags {}'.format(
                     log_prefix, snapshot.id, volume_id, snapshot.status, self.tags))
             else:
