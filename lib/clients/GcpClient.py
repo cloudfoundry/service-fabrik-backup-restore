@@ -17,10 +17,6 @@ class GcpClient(BaseClient):
 
         self.__gcpCredentials = json.loads(configuration['credentials'])
         self.project_id = configuration['projectId']
-        self.tags = {
-            'instance_id': self.INSTANCE_ID,
-            'job_name': self.JOB_NAME
-        }
 
         self.compute_api_name = 'compute'
         self.compute_api_version = 'v1'
@@ -231,6 +227,7 @@ class GcpClient(BaseClient):
             snapshot = self.get_snapshot(snapshot_name)
             if snapshot.status == 'READY':
                 self._add_snapshot(snapshot.id)
+                self.output_json['snapshotId'] = snapshot.id
                 self.logger.info('{} SUCCESS: snapshot-id={}, volume-id={}, status={} with tags {}'.format(
                     log_prefix, snapshot.id, volume_id, snapshot.status, self.tags))
             else:

@@ -214,6 +214,7 @@ class OpenstackClient(BaseClient):
         try:
             kwargs = {
                 'size': size,
+                'metadata': self.tags,
                 'availability_zone': self.availability_zone
             }
             if snapshot_id:

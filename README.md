@@ -56,8 +56,58 @@ $ touch backup.py
 Within the backup.py, put this line at the top of the file:
 ```
 from service_fabrik_backup_restore import create_iaas_client, parse_options
+# your code here
 ```
 Now you can start implementing the backup / restore for your service and take advantage of this library’s functionalities.
+
+For Google cloud the script can be invoked as:
+```
+credential_json=$(cat service-account.json)
+python3 test_br.py                     \
+  --iaas=gcp                           \
+  --type=online                        \
+  --backup_guid=<guid>                 \
+  --instance_id=<vm-XXXX-XXXX>         \
+  --container=<google-cloud-container> \
+  --job_name=<name>                    \
+  --credentials="$credential_json"     \
+  --projectId=<project id>             \
+  --secret=<secret>
+```
+
+For Openstack the script can be invoked as:
+```
+python3 backup.py                  \
+  --iaas=openstack                 \
+  --type=online                    \
+  --backup_guid=<guid>             \
+  --instance_id=<instance-id>      \
+  --secret=<secret>                \
+  --container=<container>          \
+  --job_name=<name>                \
+  --tenant_id=<tenant-id>          \
+  --tenant_name=<tenant-name>      \
+  --auth_url=<auth-url>            \
+  --user_domain_name=<domain-name> \
+  --username=<username>            \
+  --password=<password>
+```
+
+For AWS the script can be invoked as:
+
+```
+python3 test_br.py                     \
+  --iaas=aws                           \
+  --type=online                        \
+  --backup_guid=bkp_guid               \
+  --instance_id=< i-0dccbdfa125b9781c> \
+  --secret=xxxxxxxx                    \
+  --container=<container>              \
+  --job_name=<name>                    \
+  --access_key_id=<key>                \
+  --secret_access_key=<accesskey>      \
+  --region_name=<region>
+```
 
 ## How to obtain support
  

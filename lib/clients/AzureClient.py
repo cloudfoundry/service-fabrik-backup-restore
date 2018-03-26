@@ -46,6 +46,7 @@ class AzureClient(BaseClient):
             self.last_operation(msg, 'failed')
             raise Exception(msg)
         self.instance_location = None
+
         self.tags= {'instance_id' :self.INSTANCE_ID , 'job_name' :self.JOB_NAME}
 
     max_block_size=100 * 1024 * 1024
