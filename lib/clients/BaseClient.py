@@ -539,36 +539,35 @@ class BaseClient:
 
         :Example:
             ::
-                iaas_client.create_tarball_of_directory('/tmp/backup/files.tar.gz', '/var/vcap/store/blueprint/files')
+                iaas_client.create_tarball_of_directory('/var/vcap/store/blueprint/files', '/tmp/backup/files.tar.gz',)
         """
         self.logger.info(
             '[COMPRESSION] Started creating and copying a tarball ...')
         result = self.shell('tar cvzpf {} -C {} .'
                             .format(tarball_name, directory_to_tar), False)
-        self.logger.info('[ENCRYPTION] ... finished.')
+        self.logger.info('[COMPRESSION] ... finished.')
         return result
 
     def extract_tarball_of_directory(self, tarball_name, directory_to_extract):
         """Extract an encrypted tarball of a directory.
 
-        :param arball_name: the path to the directory to be extracted
+        :param tarball_name: the path to the directory to be extracted
         :param directory_to_extract: the path to a directory where to move the extracted files
 
         :Example:
             ::
-
                 iaas_client.extract_tarball_of_directory('/tmp/restore/files.tar.gz', '/var/vcap/store/blueprint/files')
         """
         if not directory_to_extract or len(directory_to_extract) == 0:
             return None
         self.logger.info(
-            '[UNCOMPRESSION] Started cleaning the directory\'s old contents ...')
+            '[DECOMPRESSION] Started cleaning the directory\'s old contents ...')
         if self.shell('rm -rf {}/*'.format(directory_to_extract)):
             self.logger.info(
-                '[UNCOMPRESSION] Started extracting a tarball ...')
+                '[DECOMPRESSION] Started extracting a tarball ...')
             result = self.shell('tar -xvf {} -C {}'
                                 .format(tarball_name, directory_to_extract), False)
-            self.logger.info('[UNCOMPRESSION] ... finished.')
+            self.logger.info('[DECOMPRESSION] ... finished.')
             return result
         return None
 

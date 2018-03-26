@@ -48,6 +48,8 @@ class AzureClient(BaseClient):
         self.instance_location = None
         self.tags= {'instance_id' :self.INSTANCE_ID , 'job_name' :self.JOB_NAME}
 
+    max_block_size=100 * 1024 * 1024
+
     def get_container(self):
         try:
             container_props = self.block_blob_service.get_container_properties(
@@ -454,7 +456,7 @@ class AzureClient(BaseClient):
         self.logger.info(
             '{} Started to upload the tarball to the object storage.'.format(log_prefix))
         try:
-            self.block_blob_service.MAX_BLOCK_SIZE = 100 * 1024 * 1024
+            self.block_blob_service.MAX_BLOCK_SIZE = max_block_size
             self.block_blob_service.create_blob_from_path(
                 self.CONTAINER,
                 blob_target_name,
@@ -476,7 +478,7 @@ class AzureClient(BaseClient):
             log_prefix,
             blob_download_target_path))
         try:
-            self.block_blob_service.MAX_BLOCK_SIZE = 100 * 1024 * 1024
+            self.block_blob_service.MAX_BLOCK_SIZE = max_block_size
             self.block_blob_service.get_blob_to_path(
                 self.CONTAINER, blob_to_download_name, blob_download_target_path,
                 max_connections=max_connections)
