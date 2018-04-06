@@ -1,4 +1,5 @@
 import boto3
+from botocore.config import Config
 from .BaseClient import BaseClient
 from ..models.Snapshot import Snapshot
 from ..models.Volume import Volume
@@ -15,11 +16,15 @@ class AwsClient(BaseClient):
             'secret_access_key': configuration['secret_access_key'],
             'region_name': configuration['region_name']
         }
+        self.max_retries = (configuration.get('max_retries') if
+                            type(configuration.get('max_retries'))
+                            == int else 10)
+        self.ec2_config = Config(retries={'max_attempts': self.max_retries})
         self.ec2 = self.create_ec2_resource()
         self.ec2.client = self.create_ec2_client()
         self.s3 = self.create_s3_resource()
         self.s3.client = self.create_s3_client()
-        self.formatted_tags= self.format_tags()
+        self.formatted_tags = self.format_tags()
         # +-> Check whether the given container exists
         self.container = self.get_container()
         if not self.container:
@@ -28,14 +33,15 @@ class AwsClient(BaseClient):
             raise Exception(msg)
 
         # +-> Get the id of the persistent volume attached to this instance
-        self.availability_zone = self._get_availability_zone_of_server(configuration['instance_id'])
+        self.availability_zone = self._get_availability_zone_of_server(
+            configuration['instance_id'])
         if not self.availability_zone:
             msg = 'Could not retrieve the availability zone of the instance.'
             self.last_operation(msg, 'failed')
             raise Exception(msg)
 
     def format_tags(self):
-        return [ {'Key': key, 'Value': value} for key, value in self.tags.items() ]
+        return [{'Key': key, 'Value': value} for key, value in self.tags.items()]
 
     def create_aws_session(self):
         return boto3.Session(
@@ -44,27 +50,22 @@ class AwsClient(BaseClient):
             region_name=self.__awsCredentials['region_name']
         )
 
-
     def create_ec2_resource(self):
-        return self.create_aws_session().resource('ec2')
-
+        return self.create_aws_session().resource('ec2', config=self.ec2_config)
 
     def create_ec2_client(self):
         try:
-            client = self.create_aws_session().client('ec2')
+            client = self.create_aws_session().client('ec2', config=self.ec2_config)
             client.describe_id_format()
             return client
         except Exception as error:
             raise Exception('Connection to AWS EC2 failed: {}'.format(error))
 
-
     def create_s3_resource(self):
         return self.create_aws_session().resource('s3')
 
-
     def create_s3_client(self):
         return self.create_aws_session().client('s3')
-
 
     def _get_availability_zone_of_server(self, instance_id):
         try:
@@ -72,9 +73,9 @@ class AwsClient(BaseClient):
             instance.load()
             return instance.placement['AvailabilityZone']
         except Exception as error:
-            self.logger.error('[EC2] ERROR: Unable to determine the availability zone of instance {}.\n{}'.format(instance_id, error))
+            self.logger.error(
+                '[EC2] ERROR: Unable to determine the availability zone of instance {}.\n{}'.format(instance_id, error))
             return None
-
 
     def get_container(self):
         try:
@@ -89,9 +90,9 @@ class AwsClient(BaseClient):
             })
             return container
         except Exception as error:
-            self.logger.error('[S3] ERROR: Unable to find or access container {}.\n{}'.format(self.CONTAINER, error))
+            self.logger.error('[S3] ERROR: Unable to find or access container {}.\n{}'.format(
+                self.CONTAINER, error))
             return None
-
 
     def get_snapshot(self, snapshot_id):
         try:
@@ -100,14 +101,12 @@ class AwsClient(BaseClient):
         except:
             return None
 
-
     def get_volume(self, volume_id):
         try:
             volume = self.ec2.Volume(volume_id)
             return Volume(volume.id, volume.state, volume.size)
         except:
             return None
-
 
     def get_attached_volumes_for_instance(self, instance_id):
         instance = self.ec2.Instance(instance_id)
@@ -118,9 +117,9 @@ class AwsClient(BaseClient):
         except:
             return []
 
-
     def get_persistent_volume_for_instance(self, instance_id):
-        device = self.shell('cat /proc/mounts | grep {}'.format(self.DIRECTORY_PERSISTENT)).split(' ')[0][:9]
+        device = self.shell(
+            'cat /proc/mounts | grep {}'.format(self.DIRECTORY_PERSISTENT)).split(' ')[0][:9]
         # http://docs.aws.amazon.com/AWSEC2/latest/UserGuide/device_naming.html
         # --> /dev/xvdk on machine will be /dev/sdk on AWS
         device = device.replace('xv', 's')
@@ -132,11 +131,11 @@ class AwsClient(BaseClient):
 
         return None
 
-
     def _create_snapshot(self, volume_id, description='Service-Fabrik: Automated backup'):
         log_prefix = '[SNAPSHOT] [CREATE]'
         snapshot = None
-        self.logger.info('{} START for volume id {} with tags {}'.format(log_prefix, volume_id, self.formatted_tags))
+        self.logger.info('{} START for volume id {} with tags {}'.format(
+            log_prefix, volume_id, self.formatted_tags))
         try:
             snapshot = self.ec2.create_snapshot(
                 VolumeId=volume_id,
@@ -148,19 +147,22 @@ class AwsClient(BaseClient):
                        snapshot.reload,
                        snapshot)
 
-            snapshot = Snapshot(snapshot.id, snapshot.volume_size, snapshot.state)
+            snapshot = Snapshot(
+                snapshot.id, snapshot.volume_size, snapshot.state)
             self._add_snapshot(snapshot.id)
 
             self.ec2.create_tags(
                 Resources=[
                     snapshot.id
                 ],
-                Tags= self.formatted_tags
+                Tags=self.formatted_tags
             )
 
-            self.logger.info('{} SUCCESS: snapshot-id={}, volume-id={} with tags {}'.format(log_prefix, snapshot.id, volume_id, self.formatted_tags))
+            self.logger.info('{} SUCCESS: snapshot-id={}, volume-id={} with tags {}'.format(
+                log_prefix, snapshot.id, volume_id, self.formatted_tags))
         except Exception as error:
-            message = '{} ERROR: volume-id={} and tags={}\n{}'.format(log_prefix, volume_id, self.formatted_tags, error)
+            message = '{} ERROR: volume-id={} and tags={}\n{}'.format(
+                log_prefix, volume_id, self.formatted_tags, error)
             self.logger.error(message)
             if snapshot:
                 self.delete_snapshot(snapshot.id)
@@ -179,7 +181,7 @@ class AwsClient(BaseClient):
                 SourceRegion=self.__awsCredentials['region_name'],
                 Description='Service-Fabrik: Encrypted Backup',
                 Encrypted=True
-                )
+            )
             new_snapshot = self.ec2.Snapshot(snapshot['SnapshotId'])
 
             self._wait('Waiting for snapshot {} to get ready...'.format(new_snapshot.id),
@@ -187,19 +189,22 @@ class AwsClient(BaseClient):
                        new_snapshot.reload,
                        new_snapshot)
 
-            snapshot = Snapshot(new_snapshot.id, new_snapshot.volume_size, new_snapshot.state)
-            self.logger.info('{} SUCCESS: snapshot-id={}, unencrypted-snapshot_id={}'.format(log_prefix, snapshot.id, snapshot_id))
+            snapshot = Snapshot(
+                new_snapshot.id, new_snapshot.volume_size, new_snapshot.state)
+            self.logger.info('{} SUCCESS: snapshot-id={}, unencrypted-snapshot_id={}'.format(
+                log_prefix, snapshot.id, snapshot_id))
             self.output_json['snapshotId'] = snapshot.id
 
             self.ec2.create_tags(
                 Resources=[
                     snapshot.id
                 ],
-                Tags= self.formatted_tags
+                Tags=self.formatted_tags
             )
 
         except Exception as error:
-            message = '{} ERROR: snapshot-id={}\n{}'.format(log_prefix, snapshot_id, error)
+            message = '{} ERROR: snapshot-id={}\n{}'.format(
+                log_prefix, snapshot_id, error)
             self.logger.error(message)
             if snapshot:
                 self.delete_snapshot(snapshot.id)
@@ -207,7 +212,6 @@ class AwsClient(BaseClient):
             raise Exception(message)
 
         return snapshot
-
 
     def _delete_snapshot(self, snapshot_id):
         log_prefix = '[SNAPSHOT] [DELETE]'
@@ -223,13 +227,14 @@ class AwsClient(BaseClient):
                        snapshot_id)
 
             self._remove_snapshot(snapshot_id)
-            self.logger.info('{} SUCCESS: snapshot-id={}'.format(log_prefix, snapshot_id))
+            self.logger.info(
+                '{} SUCCESS: snapshot-id={}'.format(log_prefix, snapshot_id))
             return True
         except Exception as error:
-            message = '{} ERROR: snapshot-id={}\n{}'.format(log_prefix, snapshot_id, error)
+            message = '{} ERROR: snapshot-id={}\n{}'.format(
+                log_prefix, snapshot_id, error)
             self.logger.error(message)
             raise Exception(message)
-
 
     def _create_volume(self, size, snapshot_id=None):
         log_prefix = '[VOLUME] [CREATE]'
@@ -258,10 +263,11 @@ class AwsClient(BaseClient):
                 Resources=[
                     volume.id
                 ],
-                Tags= self.formatted_tags
+                Tags=self.formatted_tags
             )
 
-            self.logger.info('{} SUCCESS: volume-id={} with tags = {} '.format(log_prefix, volume.id, self.formatted_tags))
+            self.logger.info('{} SUCCESS: volume-id={} with tags = {} '.format(
+                log_prefix, volume.id, self.formatted_tags))
         except Exception as error:
             message = '{} ERROR: size={}\n{}'.format(log_prefix, size, error)
             self.logger.error(message)
@@ -271,7 +277,6 @@ class AwsClient(BaseClient):
             raise Exception(message)
 
         return volume
-
 
     def _delete_volume(self, volume_id):
         log_prefix = '[VOLUME] [DELETE]'
@@ -287,13 +292,14 @@ class AwsClient(BaseClient):
                        volume_id)
 
             self._remove_volume(volume_id)
-            self.logger.info('{} SUCCESS: volume-id={}'.format(log_prefix, volume_id))
+            self.logger.info(
+                '{} SUCCESS: volume-id={}'.format(log_prefix, volume_id))
             return True
         except Exception as error:
-            message = '{} ERROR: volume-id={}\n{}'.format(log_prefix, volume_id, error)
+            message = '{} ERROR: volume-id={}\n{}'.format(
+                log_prefix, volume_id, error)
             self.logger.error(message)
             raise Exception(message)
-
 
     def _create_attachment(self, volume_id, instance_id):
         log_prefix = '[ATTACHMENT] [CREATE]'
@@ -315,9 +321,11 @@ class AwsClient(BaseClient):
             self._add_volume_device(volume_id, device)
             attachment = Attachment(0, volume_id, instance_id)
             self._add_attachment(volume_id, instance_id)
-            self.logger.info('{} SUCCESS: volume-id={}, instance-id={}'.format(log_prefix, volume_id, instance_id))
+            self.logger.info(
+                '{} SUCCESS: volume-id={}, instance-id={}'.format(log_prefix, volume_id, instance_id))
         except Exception as error:
-            message = '{} ERROR: volume-id={}, instance-id={}\n{}'.format(log_prefix, volume_id, instance_id, error)
+            message = '{} ERROR: volume-id={}, instance-id={}\n{}'.format(
+                log_prefix, volume_id, instance_id, error)
             self.logger.error(message)
 
             # The following lines are a workaround for a boto3 bug:
@@ -326,7 +334,7 @@ class AwsClient(BaseClient):
             # check whether the volume is attached and if yes, trigger the detachment
             volume = self.get_volume(volume_id)
             if volume.status == 'in-use':
-                self.logger.warning('[VOLUME] [DELETE] Volume is in state {} although the attaching process failed, '\
+                self.logger.warning('[VOLUME] [DELETE] Volume is in state {} although the attaching process failed, '
                                     'triggering detachment'.format(volume.status))
                 attachment = True
 
@@ -336,7 +344,6 @@ class AwsClient(BaseClient):
             raise Exception(message)
 
         return attachment
-
 
     def _delete_attachment(self, volume_id, instance_id):
         log_prefix = '[ATTACHMENT] [DELETE]'
@@ -355,18 +362,18 @@ class AwsClient(BaseClient):
 
             self._remove_volume_device(volume_id)
             self._remove_attachment(volume_id, instance_id)
-            self.logger.info('{} SUCCESS: volume-id={}, instance-id={}'.format(log_prefix, volume_id, instance_id))
+            self.logger.info(
+                '{} SUCCESS: volume-id={}, instance-id={}'.format(log_prefix, volume_id, instance_id))
             return True
         except Exception as error:
-            message = '{} ERROR: volume-id={}, instance-id={}\n{}'.format(log_prefix, volume_id, instance_id, error)
+            message = '{} ERROR: volume-id={}, instance-id={}\n{}'.format(
+                log_prefix, volume_id, instance_id, error)
             self.logger.error(message)
             raise Exception(message)
-
 
     def _find_volume_device(self, volume_id):
         # Nothing to do for AWS as the device name is specified manually while attaching a volume and therefore known
         pass
-
 
     def get_mountpoint(self, volume_id, partition=None):
         device = self._get_device_of_volume(volume_id)
@@ -379,45 +386,45 @@ class AwsClient(BaseClient):
             device += partition
         return device
 
-
     def _upload_to_blobstore(self, blob_to_upload_path, blob_target_name):
         log_prefix = '[S3] [UPLOAD]'
 
         if self.container:
-            self.logger.info('{} Started to upload the tarball to the object storage.'.format(log_prefix))
+            self.logger.info(
+                '{} Started to upload the tarball to the object storage.'.format(log_prefix))
             try:
-                self.container.upload_file(blob_to_upload_path, blob_target_name)
+                self.container.upload_file(
+                    blob_to_upload_path, blob_target_name)
                 self.logger.info('{} SUCCESS: blob_to_upload={}, blob_target_name={}, container={}'
                                  .format(log_prefix, blob_to_upload_path, blob_target_name, self.CONTAINER))
                 return True
             except Exception as error:
-                message = '{} ERROR: blob_to_upload={}, blob_target_name={}, container={}\n{}'.format(log_prefix,
-                          blob_to_upload_path, blob_target_name, self.CONTAINER, error)
+                message = '{} ERROR: blob_to_upload={}, blob_target_name={}, container={}\n{}'.format(
+                    log_prefix, blob_to_upload_path, blob_target_name, self.CONTAINER, error)
                 self.logger.error(message)
                 raise Exception(message)
-
 
     def _download_from_blobstore(self, blob_to_download_name, blob_download_target_path):
         log_prefix = '[S3] [DOWNLOAD]'
 
         if self.container:
-            self.logger.info('{} Started to download the tarball to target.'.format(log_prefix,
-                                                                                    blob_download_target_path))
+            self.logger.info('{} Started to download the tarball to target{}.'
+                             .format(log_prefix, blob_download_target_path))
             try:
-                self.container.download_file(blob_to_download_name, blob_download_target_path)
-                self.logger.info('{} SUCCESS: blob_to_download={}, blob_target_name={}, container={}'
-                                 .format(log_prefix, blob_to_download_name, self.CONTAINER,
-                                         blob_download_target_path))
+                self.container.download_file(
+                    blob_to_download_name, blob_download_target_path)
+                self.logger.info('{} SUCCESS: blob_to_download={}, blob_target_name={}, container={}'.format(
+                    log_prefix, blob_to_download_name, self.CONTAINER, blob_download_target_path))
                 return True
             except Exception as error:
-                message = '{} ERROR: blob_to_download={}, blob_target_name={}, container={}\n{}'.format(log_prefix,
-                          blob_to_download_name, blob_download_target_path, self.CONTAINER, error)
+                message = '{} ERROR: blob_to_download={}, blob_target_name={}, container={}\n{}'.format(
+                    log_prefix, blob_to_download_name, blob_download_target_path, self.CONTAINER, error)
                 self.logger.error(message)
                 raise Exception(message)
 
-
     def _download_from_blobstore_and_pipe_to_process(self, process, blob_to_download_name, segment_size):
-        s3_object_body = self.s3.Object(self.CONTAINER, blob_to_download_name).get()['Body']
+        s3_object_body = self.s3.Object(
+            self.CONTAINER, blob_to_download_name).get()['Body']
         chunk = s3_object_body.read(segment_size)
         while chunk:
             process.stdin.write(chunk)
