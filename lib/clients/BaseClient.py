@@ -105,8 +105,8 @@ class BaseClient:
         methods_allow_aborting = [
             'get_persistent_volume_for_instance', 'copy_snapshot', 'create_snapshot', 'create_volume',
             'create_attachment', 'get_mountpoint', 'copy_directory', 'delete_directory', 'create_directory', 'format_device',
-            'mount_device', 'create_and_encrypt_tarball_of_directory', 'encrypt_file', 'upload_to_blobstore', 'unmount_device', 'delete_attachment',
-            'delete_volume', 'delete_snapshot', 'download_from_blobstore', 'decrypt_and_extract_tarball_of_directory', 'decrypt_file'
+            'mount_device', 'create_and_encrypt_tarball_of_directory', 'create_tarball_of_directory', 'encrypt_file', 'upload_to_blobstore', 'unmount_device', 'delete_attachment',
+            'delete_volume', 'delete_snapshot', 'download_from_blobstore', 'decrypt_and_extract_tarball_of_directory', 'extract_tarball_of_directory', 'decrypt_file'
         ]
         if isinstance(method, types.MethodType) and attr in methods_allow_aborting and self.__ABORT:
             self.__abort()
@@ -533,6 +533,46 @@ class BaseClient:
             result = self.shell('gpg --no-use-agent --passphrase {} -d {} | tar -xzf - -C {}/'
                                 .format(self.SECRET, encrypted_tarball_name, directory_to_extract), False)
             self.logger.info('[DECRYPTION] ... finished.')
+            return result
+        return None
+
+    def create_tarball_of_directory(self, directory_to_tar, tarball_name):
+        """Create a tarball of a directory.
+
+        :param directory_to_tar: the path to the directory to be archived
+        :param tarball_name: the path where to store the resulting archive
+
+        :Example:
+            ::
+                iaas_client.create_tarball_of_directory('/var/vcap/store/blueprint/files', '/tmp/backup/files.tar.gz',)
+        """
+        self.logger.info(
+            '[COMPRESSION] Started creating and copying a tarball ...')
+        result = self.shell('tar cvzpf {} -C {} .'
+                            .format(tarball_name, directory_to_tar), False)
+        self.logger.info('[COMPRESSION] ... finished.')
+        return result
+
+    def extract_tarball_of_directory(self, tarball_name, directory_to_extract):
+        """Extract an encrypted tarball of a directory.
+
+        :param tarball_name: the path to the directory to be extracted
+        :param directory_to_extract: the path to a directory where to move the extracted files
+
+        :Example:
+            ::
+                iaas_client.extract_tarball_of_directory('/tmp/restore/files.tar.gz', '/var/vcap/store/blueprint/files')
+        """
+        if not directory_to_extract or len(directory_to_extract) == 0:
+            return None
+        self.logger.info(
+            '[DECOMPRESSION] Started cleaning the directory\'s old contents ...')
+        if self.shell('rm -rf {}/*'.format(directory_to_extract)):
+            self.logger.info(
+                '[DECOMPRESSION] Started extracting a tarball ...')
+            result = self.shell('tar -xvf {} -C {}'
+                                .format(tarball_name, directory_to_extract), False)
+            self.logger.info('[DECOMPRESSION] ... finished.')
             return result
         return None
 

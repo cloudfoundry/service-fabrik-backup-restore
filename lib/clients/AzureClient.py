@@ -46,6 +46,10 @@ class AzureClient(BaseClient):
             self.last_operation(msg, 'failed')
             raise Exception(msg)
         self.instance_location = None
+
+        self.tags= {'instance_id' :self.INSTANCE_ID , 'job_name' :self.JOB_NAME}
+        self.max_block_size=100 * 1024 * 1024
+
     def get_container(self):
         try:
             container_props = self.block_blob_service.get_container_properties(
@@ -447,15 +451,17 @@ class AzureClient(BaseClient):
             device += partition
         return device
 
-    def _upload_to_blobstore(self, blob_to_upload_path, blob_target_name):
+    def _upload_to_blobstore(self, blob_to_upload_path, blob_target_name, max_connections=2):
         log_prefix = '[AZURE STORAGE CONTAINER] [UPLOAD]'
         self.logger.info(
             '{} Started to upload the tarball to the object storage.'.format(log_prefix))
         try:
+            self.block_blob_service.MAX_BLOCK_SIZE = self.max_block_size
             self.block_blob_service.create_blob_from_path(
                 self.CONTAINER,
                 blob_target_name,
-                blob_to_upload_path)
+                blob_to_upload_path,
+                max_connections=max_connections)
             # TODO: need to check above 'blob_target_name'
             self.logger.info('{} SUCCESS: blob_to_upload={}, blob_target_name={}, container={}'.format(
                 log_prefix, blob_to_upload_path, blob_target_name, self.CONTAINER))
@@ -466,14 +472,16 @@ class AzureClient(BaseClient):
             self.logger.error(message)
             raise Exception(message)
 
-    def _download_from_blobstore(self, blob_to_download_name, blob_download_target_path):
+    def _download_from_blobstore(self, blob_to_download_name, blob_download_target_path, max_connections=2):
         log_prefix = '[AZURE STORAGE CONTAINER] [DOWNLOAD]'
         self.logger.info('{} Started to download the tarball to target {}.'.format(
             log_prefix,
             blob_download_target_path))
         try:
+            self.block_blob_service.MAX_BLOCK_SIZE = self.max_block_size
             self.block_blob_service.get_blob_to_path(
-                self.CONTAINER, blob_to_download_name, blob_download_target_path)
+                self.CONTAINER, blob_to_download_name, blob_download_target_path,
+                max_connections=max_connections)
             self.logger.info('{} SUCCESS: blob_to_download={}, blob_target_name={}, container={}'
                              .format(log_prefix, blob_to_download_name, self.CONTAINER,
                                      blob_download_target_path))
