@@ -12,7 +12,8 @@ parameters_credentials = {
     'aws': {
         'access_key_id': 'AWS Access Key ID',
         'secret_access_key': 'AWS Secret Access Key',
-        'region_name': 'AWS Region Name'
+        'region_name': 'AWS Region Name',
+        'max_retries': 'Max number of retries for SDK AWS client'
     },
     'azure': {
         'subscription_id': 'Azure subscription id',
