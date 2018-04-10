@@ -47,8 +47,7 @@ class AzureClient(BaseClient):
             raise Exception(msg)
         self.instance_location = None
 
-        self.tags= {'instance_id' :self.INSTANCE_ID , 'job_name' :self.JOB_NAME}
-        self.max_block_size=100 * 1024 * 1024
+        self.max_block_size = 100 * 1024 * 1024
 
     def get_container(self):
         try:
