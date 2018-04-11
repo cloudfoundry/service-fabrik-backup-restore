@@ -56,7 +56,6 @@ class AwsClient(BaseClient):
     def create_ec2_client(self):
         try:
             client = self.create_aws_session().client('ec2', config=self.ec2_config)
-            client.describe_id_format()
             return client
         except Exception as error:
             raise Exception('Connection to AWS EC2 failed: {}'.format(error))
