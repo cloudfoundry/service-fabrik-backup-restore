@@ -18,7 +18,7 @@ class AwsClient(BaseClient):
         }
         self.max_retries = (configuration.get('max_retries') if
                             type(configuration.get('max_retries'))
-                            == int else 10)
+                            == int else 15)
         self.ec2_config = Config(retries={'max_attempts': self.max_retries})
         self.ec2 = self.create_ec2_resource()
         self.ec2.client = self.create_ec2_client()
@@ -56,7 +56,6 @@ class AwsClient(BaseClient):
     def create_ec2_client(self):
         try:
             client = self.create_aws_session().client('ec2', config=self.ec2_config)
-            client.describe_id_format()
             return client
         except Exception as error:
             raise Exception('Connection to AWS EC2 failed: {}'.format(error))
