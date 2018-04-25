@@ -202,7 +202,7 @@ class GcpClient(BaseClient):
                     instance_id, error))
             return None
 
-    def _create_snapshot(self, volume_id):
+    def _create_snapshot(self, volume_id, description='Service-Fabrik: Automated backup'):
         log_prefix = '[SNAPSHOT] [CREATE]'
         snapshot = None
         snapshot_creation_operation = None
@@ -211,7 +211,7 @@ class GcpClient(BaseClient):
             snapshot_body = {
                 'name': snapshot_name,
                 'labels': self.tags,
-                'description': 'Service-Fabrik: Automated backup'
+                'description': description
             }
             self.logger.info('{} START for volume id {} with tags {} and snapshot name {}'.format(
                 log_prefix, volume_id, self.tags, snapshot_name))
