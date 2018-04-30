@@ -91,7 +91,8 @@ class GcpClient(BaseClient):
         try:
             container = self.storage_client.get_bucket(self.CONTAINER)
             # Test if the container is accessible
-            blob = Blob('AccessTestByServiceFabrikPythonLibrary', container)
+            blob_name = '{}/{}'.format(self.GUID, 'AccessTestByServiceFabrikPythonLibrary')
+            blob = Blob(blob_name, container)
             blob.upload_from_string(
                 'Sample Message for AccessTestByServiceFabrikPythonLibrary', content_type='text/plain')
             blob.delete()
