@@ -63,7 +63,7 @@ class AzureClient(BaseClient):
     def access_container(self):
         # Test if the container is accessible
         try:
-            key = 'AccessTestByServiceFabrikPythonLibrary'
+            key = '{}/{}'.format(self.GUID, 'AccessTestByServiceFabrikPythonLibrary')
             self.block_blob_service.create_blob_from_text(
                 self.CONTAINER,
                 key,

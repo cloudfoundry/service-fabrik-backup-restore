@@ -80,7 +80,7 @@ class AwsClient(BaseClient):
         try:
             container = self.s3.Bucket(self.CONTAINER)
             # Test if the container is accessible
-            key = 'AccessTestByServiceFabrikPythonLibrary'
+            key = '{}/{}'.format(self.GUID, 'AccessTestByServiceFabrikPythonLibrary')
             container.put_object(Key=key)
             container.delete_objects(Delete={
                 'Objects': [{
