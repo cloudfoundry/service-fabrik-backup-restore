@@ -6,5 +6,3 @@
 
 # Backup-Restore python files
 __pycache__/
-.coveragerc
-.travis.yml
