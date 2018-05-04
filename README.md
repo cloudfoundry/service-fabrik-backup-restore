@@ -46,6 +46,19 @@ $ cd ~/workspace/my_service/service_fabrik_backup_restore
 $ pip3 install -r requirements.txt
 ```
 
+### DEVELOPING WITH THE LIBRARY
+We are using [pytest](https://pytest.readthedocs.io/en/2.7.3/index.html) as a unit tests framework. You can use setup tool to run tests with/without coverage report as below:
+```
+python setup.py test --coverage
+# Or
+python setup.py test -C
+```
+Or you can also use simple pytest command to do so:
+```
+pip3 install -r requirements-dev.txt
+python3 -m pytest --cov=lib --cov-report html -v tests/
+```
+
 ### USING THE LIBRARY
 
 Basically, you have to create a new file, e.g. backup.py, and import the Backup & Restore library:

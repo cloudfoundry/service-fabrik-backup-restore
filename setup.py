@@ -29,10 +29,10 @@ class PyTest(TestCommand):
 
     def finalize_options(self):
         TestCommand.finalize_options(self)
-        self.test_args = [ 'tests/' ]
+        self.test_args = [ 'tests/', '--capture=no', '-vv']
         if self.coverage:
             self.test_args += [
-                '--cov=lib', '--cov-report', 'html' , '-v']
+                '--cov=lib', '--cov-report', 'html']
         self.test_suite = True
 
     def run_tests(self):
