@@ -1,5 +1,8 @@
 #!/usr/bin/env python3
 
+import sys
+from setuptools.command.test import test as TestCommand
+
 try:
     from setuptools import setup
 except ImportError:
@@ -10,6 +13,34 @@ settings = dict()
 with open('requirements.txt') as file_requirements:
     requirements = file_requirements.read().splitlines()
 
+with open('requirements-dev.txt') as file_requirements:
+    requirements_dev = file_requirements.read().splitlines()
+
+class PyTest(TestCommand):
+    user_options = [
+         # long option, short option, description
+         ('coverage', 'C', 'Show coverage statistics')
+    ]
+    description = 'run tests on Python source files'
+
+    def initialize_options(self):
+        TestCommand.initialize_options(self)
+        self.coverage = False
+
+    def finalize_options(self):
+        TestCommand.finalize_options(self)
+        self.test_args = [ 'tests/' ]
+        if self.coverage:
+            self.test_args += [
+                '--cov=lib', '--cov-report', 'html' , '-v']
+        self.test_suite = True
+
+    def run_tests(self):
+        #import here, cause outside the eggs aren't loaded
+        import pytest
+        errno = pytest.main(self.test_args)
+        sys.exit(errno)
+
 settings.update(
     name='service_fabrik_backup_restore',
     version='1',
@@ -19,7 +50,11 @@ settings.update(
     license='Apache 2.0',
     url='http://',
     keywords="service fabrik service-fabrik backup restore backup-restore broker cloud foundry",
-    install_requires=requirements
+    install_requires=requirements,
+    tests_require=requirements_dev,
+    cmdclass = {
+        'test': PyTest
+    }
 )
 
 setup(**settings)

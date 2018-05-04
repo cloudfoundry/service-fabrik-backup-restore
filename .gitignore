@@ -1,8 +1,17 @@
 .DS_Store
 .idea
+.vscode/
 
 # Ignore all logfiles and tempfiles.
 /logs/*.log
 
 # Backup-Restore python files
 __pycache__/
+
+# Ignore pytest, coverage and setuptools files and folders
+.coverage
+.eggs/
+.pytest_cache/
+dist/
+htmlcov/
+service_fabrik_backup_restore.egg-info/
