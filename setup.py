@@ -16,6 +16,8 @@ with open('requirements.txt') as file_requirements:
 with open('requirements-dev.txt') as file_requirements:
     requirements_dev = file_requirements.read().splitlines()
 
+requirements_complete = requirements_dev + requirements
+
 class PyTest(TestCommand):
     user_options = [
          # long option, short option, description
@@ -51,7 +53,7 @@ settings.update(
     url='http://',
     keywords="service fabrik service-fabrik backup restore backup-restore broker cloud foundry",
     install_requires=requirements,
-    tests_require=requirements_dev,
+    tests_require=requirements_complete,
     cmdclass = {
         'test': PyTest
     }
