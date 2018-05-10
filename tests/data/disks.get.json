@@ -1,0 +1,18 @@
+{
+ "kind": "compute#disk",
+ "id": "1111",
+ "creationTimestamp": "2018-03-04T02:03:47.599-08:00",
+ "name": "disk-id",
+ "description": "VM Disk",
+ "sizeGb": "40",
+ "zone": "https://www.something.com/compute/v1/projects/gcp-dev/zones/europe-west1-b",
+ "status": "READY",
+ "selfLink": "https://www.something.com/compute/v1/projects/gcp-dev/zones/europe-west1-b/disks/disk-id",
+ "type": "https://www.something.com/compute/v1/projects/gcp-dev/zones/europe-west1-b/diskTypes/pd-standard",
+ "lastAttachTimestamp": "2018-04-18T03:14:27.984-07:00",
+ "lastDetachTimestamp": "2018-04-18T03:13:37.283-07:00",
+ "users": [
+  "https://www.something.com/compute/v1/projects/gcp-dev/zones/europe-west1-b/instances/vm-id"
+ ],
+ "labelFingerprint": "mmmmm"
+}

@@ -1,0 +1,14 @@
+{
+    "error": {
+     "errors": [
+      {
+       "domain": "global",
+       "reason": "notFound",
+       "message": "The resource 'projects/gcp-dev/zones/europe-west1-b/disks/notfound-disk-id' was not found"
+      }
+     ],
+     "code": 404,
+     "message": "The resource 'projects/gcp-dev/zones/europe-west1-b/disks/notfound-disk-id' was not found"
+    }
+}
+   

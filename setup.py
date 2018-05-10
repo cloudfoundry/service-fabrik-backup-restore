@@ -21,20 +21,25 @@ requirements_complete = requirements_dev + requirements
 class PyTest(TestCommand):
     user_options = [
          # long option, short option, description
-         ('coverage', 'C', 'Show coverage statistics')
+         ('coverage', 'c', 'Show coverage statistics'),
+         ('capture', 'p', 'Show stdout stderr logs')
     ]
     description = 'run tests on Python source files'
 
     def initialize_options(self):
         TestCommand.initialize_options(self)
         self.coverage = False
+        self.capture = False
 
     def finalize_options(self):
         TestCommand.finalize_options(self)
-        self.test_args = [ 'tests/', '--capture=no', '-vv']
+        self.test_args = [ 'tests/', '-vv']
         if self.coverage:
-            self.test_args += [
-                '--cov=lib', '--cov-report', 'html']
+            self.test_args += ['--cov=lib', '--cov-report', 'html']
+        
+        if self.capture:
+            self.test_args += ['--capture=no']
+
         self.test_suite = True
 
     def run_tests(self):
