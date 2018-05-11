@@ -47,16 +47,18 @@ $ pip3 install -r requirements.txt
 ```
 
 ### DEVELOPING WITH THE LIBRARY
-We are using [pytest](https://pytest.readthedocs.io/en/2.7.3/index.html) as a unit tests framework. You can use setup tool to run tests with/without coverage report as below:
+We are using [pytest](https://pytest.readthedocs.io/en/2.7.3/index.html) as a unit tests framework. You can use setup tool to run tests with multiple options:
+--coverage or -c : Generate coverage report
+--capture or -p : To show stdout/stderr on console
 ```
-python3 setup.py test --coverage
+python3 setup.py test --coverage --capture
 # Or
-python3 setup.py test -C
+python3 setup.py test -c -p
 ```
 Or you can also use simple pytest command to do so:
 ```
 pip3 install -r requirements-dev.txt
-python3 -m pytest --cov=lib --cov-report html -v tests/
+python3 -m pytest --cov=lib --cov-report html -v tests/ --capture=no
 ```
 
 ### USING THE LIBRARY
