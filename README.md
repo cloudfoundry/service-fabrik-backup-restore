@@ -47,7 +47,7 @@ $ pip3 install -r requirements.txt
 ```
 
 ### DEVELOPING WITH THE LIBRARY
-We are using [pytest](https://pytest.readthedocs.io/en/2.7.3/index.html) as a unit tests framework. You can use setup tool to run tests with multiple options:
+We are using [pytest](https://pytest.readthedocs.io/en/3.5.1/index.html) as a unit tests framework. You can use setup tool to run tests with multiple options:
 --coverage or -c : Generate coverage report
 --capture or -p : To show stdout/stderr on console
 ```
