@@ -47,6 +47,10 @@ $ pip3 install -r requirements.txt
 ```
 
 ### DEVELOPING WITH THE LIBRARY
+Install dev dependencies
+```
+pip3 install -r requirements-dev.txt
+```
 We are using [pytest](https://pytest.readthedocs.io/en/3.5.1/index.html) as a unit tests framework. You can use setup tool to run tests with multiple options:
 --coverage or -c : Generate coverage report
 --capture or -p : To show stdout/stderr on console
@@ -57,7 +61,6 @@ python3 setup.py test -c -p
 ```
 Or you can also use simple pytest command to do so:
 ```
-pip3 install -r requirements-dev.txt
 python3 -m pytest --cov=lib --cov-report html -v tests/ --capture=no
 ```
 
