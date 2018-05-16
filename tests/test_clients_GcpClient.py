@@ -56,7 +56,7 @@ invalid_disk_name = 'invalid-disk-id'
 class ComputeClient:
     class instances:
         def aggregatedList(self, project, filter=None):
-            http = HttpMock('tests/data/instances.aggregatedList.json', {'status': '200'})
+            http = HttpMock('tests/data/gcp/instances.aggregatedList.json', {'status': '200'})
             model = JsonModel()
             uri = 'some_uri'
             method = 'GET'
@@ -74,7 +74,7 @@ class ComputeClient:
     class snapshots:
         def get(self, project, snapshot):
             if snapshot == valid_snapshot_name:
-                http = HttpMock('tests/data/snapshots.get.json', {'status': '200'})
+                http = HttpMock('tests/data/gcp/snapshots.get.json', {'status': '200'})
                 model = JsonModel()
                 uri = 'some_uri'
                 method = 'GET'
@@ -86,7 +86,7 @@ class ComputeClient:
                     headers={}
                 )
             elif snapshot == not_found_snapshot_name:
-                http = HttpMock('tests/data/snapshots.get.notfound.json', {'status': '404'})
+                http = HttpMock('tests/data/gcp/snapshots.get.notfound.json', {'status': '404'})
                 model = JsonModel()
                 uri = 'some_uri'
                 method = 'GET'
@@ -98,7 +98,7 @@ class ComputeClient:
                     headers={}
                 )
             elif snapshot == invalid_snapshot_name:
-                http = HttpMock('tests/data/snapshots.get.forbidden.json', {'status': '403'})
+                http = HttpMock('tests/data/gcp/snapshots.get.forbidden.json', {'status': '403'})
                 model = JsonModel()
                 uri = 'some_uri'
                 method = 'GET'
@@ -113,7 +113,7 @@ class ComputeClient:
     class disks:
         def get(self, project, zone, disk):
             if disk == valid_disk_name:
-                http = HttpMock('tests/data/disks.get.json', {'status': '200'})
+                http = HttpMock('tests/data/gcp/disks.get.json', {'status': '200'})
                 model = JsonModel()
                 uri = 'some_uri'
                 method = 'GET'
@@ -125,7 +125,7 @@ class ComputeClient:
                     headers={}
                 )
             elif disk == not_found_disk_name:
-                http = HttpMock('tests/data/disks.get.notfound.json', {'status': '404'})
+                http = HttpMock('tests/data/gcp/disks.get.notfound.json', {'status': '404'})
                 model = JsonModel()
                 uri = 'some_uri'
                 method = 'GET'
@@ -137,7 +137,7 @@ class ComputeClient:
                     headers={}
                 )
             elif disk == invalid_disk_name:
-                http = HttpMock('tests/data/disks.get.forbidden.json', {'status': '403'})
+                http = HttpMock('tests/data/gcp/disks.get.forbidden.json', {'status': '403'})
                 model = JsonModel()
                 uri = 'some_uri'
                 method = 'GET'
