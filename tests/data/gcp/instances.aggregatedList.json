@@ -1,0 +1,101 @@
+{
+    "kind": "compute#instanceAggregatedList",
+    "id": "projects/gcp-dev/aggregated/instances",
+    "items": {
+     "zones/europe-west1-b": {
+      "instances": [
+       {
+        "kind": "compute#instance",
+        "id": "55555",
+        "creationTimestamp": "2018-04-24T03:13:56.688-07:00",
+        "name": "vm-id",
+        "description": "Instance",
+        "tags": {
+         "items": [
+          "dev-vm"
+         ],
+         "fingerprint": "aaaa"
+        },
+        "machineType": "https://www.something.com/compute/v1/projects/gcp-dev/zones/europe-west1-b/machineTypes/custom-2-4096",
+        "status": "RUNNING",
+        "zone": "https://www.something.com/compute/v1/projects/gcp-dev/zones/europe-west1-b",
+        "networkInterfaces": [
+         {
+          "kind": "compute#networkInterface",
+          "network": "https://www.something.com/compute/v1/projects/gcp-dev/global/networks/network-gcp-dev",
+          "subnetwork": "https://www.something.com/compute/v1/projects/gcp-dev/regions/europe-west1/subnetworks/subnetwork-gcp-dev",
+          "networkIP": "x.x.x.x",
+          "name": "nic0",
+          "fingerprint": "bbbb"
+         }
+        ],
+        "disks": [
+         {
+          "kind": "compute#attachedDisk",
+          "type": "PERSISTENT",
+          "mode": "READ_WRITE",
+          "source": "https://www.something.com/compute/v1/projects/gcp-dev/zones/europe-west1-b/disks/vm-id",
+          "deviceName": "persistent-disk-0",
+          "index": 0,
+          "boot": true,
+          "autoDelete": true,
+          "interface": "SCSI"
+         },
+         {
+          "kind": "compute#attachedDisk",
+          "type": "PERSISTENT",
+          "mode": "READ_WRITE",
+          "source": "https://www.something.com/compute/v1/projects/gcp-dev/zones/europe-west1-b/disks/disk-id",
+          "deviceName": "disk-id",
+          "index": 1,
+          "boot": false,
+          "autoDelete": false,
+          "interface": "SCSI"
+         }
+        ],
+        "metadata": {
+         "kind": "compute#metadata",
+         "fingerprint": "cccc",
+         "items": [
+          {
+           "key": "created_at",
+           "value": "2018-04-24T10:14:14Z"
+          },
+          {
+           "key": "index",
+           "value": "0"
+          }
+         ]
+        },
+        "selfLink": "https://www.something.com/compute/v1/projects/gcp-dev/zones/europe-west1-b/instances/vm-id"
+       }
+      ]
+     },
+     "zones/europe-west1-c": {
+      "warning": {
+       "code": "NO_RESULTS_ON_PAGE",
+       "message": "There are no results for scope 'zones/europe-west1-c' on this page.",
+       "data": [
+        {
+         "key": "scope",
+         "value": "zones/europe-west1-c"
+        }
+       ]
+      }
+     },
+     "zones/europe-west1-d": {
+      "warning": {
+       "code": "NO_RESULTS_ON_PAGE",
+       "message": "There are no results for scope 'zones/europe-west1-d' on this page.",
+       "data": [
+        {
+         "key": "scope",
+         "value": "zones/europe-west1-d"
+        }
+       ]
+      }
+     }
+    },
+    "selfLink": "https://www.something.com/compute/v1/projects/gcp-dev/aggregated/instances"
+   }
+   

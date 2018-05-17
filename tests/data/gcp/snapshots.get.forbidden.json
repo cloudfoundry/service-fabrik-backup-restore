@@ -1,0 +1,13 @@
+{
+    "error": {
+     "errors": [
+      {
+       "domain": "global",
+       "reason": "forbidden",
+       "message": "Required 'compute.snapshots.get' permission for 'projects/gcp-dev/global/snapshots/invalid-snapshot-id'"
+      }
+     ],
+     "code": 403,
+     "message": "Required 'compute.snapshots.get' permission for 'projects/gcp-dev/global/snapshots/invalid-snapshot-id'"
+    }
+}

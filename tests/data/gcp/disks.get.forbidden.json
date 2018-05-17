@@ -1,0 +1,14 @@
+{
+    "error": {
+     "errors": [
+      {
+       "domain": "global",
+       "reason": "forbidden",
+       "message": "Required 'compute.disks.get' permission for 'projects/gcp-dev/zones/europe-west1-b/disks/invalid-disk-id'"
+      }
+     ],
+     "code": 403,
+     "message": "Required 'compute.disks.get' permission for 'projects/gcp-dev/zones/europe-west1-b/disks/invalid-disk-id'"
+    }
+}
+   

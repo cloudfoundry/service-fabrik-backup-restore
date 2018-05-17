@@ -1,0 +1,13 @@
+{
+    "error": {
+     "errors": [
+      {
+       "domain": "global",
+       "reason": "notFound",
+       "message": "The resource 'projects/gcp-dev/global/snapshots/notfound-snapshot-id' was not found"
+      }
+     ],
+     "code": 404,
+     "message": "The resource 'projects/gcp-dev/global/snapshots/notfound-snapshot-id' was not found"
+    }
+}
