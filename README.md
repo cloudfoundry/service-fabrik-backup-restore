@@ -1,3 +1,4 @@
+[![Coverage Status](https://coveralls.io/repos/github/cloudfoundry-incubator/service-fabrik-backup-restore/badge.svg?branch=master)](https://coveralls.io/github/cloudfoundry-incubator/service-fabrik-backup-restore?branch=master) [![Travis Build Status](https://travis-ci.org/cloudfoundry-incubator/service-fabrik-backup-restore.svg?branch=master)](https://travis-ci.org/cloudfoundry-incubator/service-fabrik-backup-restore.svg?branch=master)
 # Backup & Restore Python Library for CF Services managed by the Service Fabrik 
 
 ## Overview
