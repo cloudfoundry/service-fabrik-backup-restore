@@ -1,5 +1,6 @@
 import os
 import pytest
+import glob
 from lib.clients.GcpClient import GcpClient
 from lib.clients.BaseClient import BaseClient
 from unittest.mock import patch
@@ -25,7 +26,7 @@ configuration = {
     'projectId' : project_id,
     'credentials': '{ "type": "service_account", "project_id": "gcp-dev", "client_id": "123", "private_key_id": "2222",  "private_key": "-----BEGIN PRIVATE KEY-----\\nMIIEFatI0=\\n-----END PRIVATE KEY-----\\n", "client_email": "user@gcp-dev.com", "client_id": "6666", "auth_uri": "auth_uri", "token_uri": "token_uri", "auth_provider_x509_cert_url": "cert_url", "client_x509_cert_url": "cert_url"  }'
 }
-directory_persistent = '/tmp'
+directory_persistent = '/var/vcap/store'
 directory_work_list = '/tmp'
 log_dir = 'tests'
 poll_delay_time = 10
@@ -48,10 +49,16 @@ bucket = {
 valid_snapshot_name = 'snapshot-id'
 not_found_snapshot_name = 'notfound-snapshot-id'
 invalid_snapshot_name = 'invalid-snapshot-id'
-
 valid_disk_name = 'disk-id'
 not_found_disk_name = 'notfound-disk-id'
 invalid_disk_name = 'invalid-disk-id'
+ephemeral_disk_name = 'vm-id' # ephemeral disk name is by default vm name
+ephemeral_disk_device_path = '/dev/disk/by-id/google-persistent-disk-0'
+ephemeral_disk_device_id = '/dev/sda'
+persistent_disk_device_path = '/dev/disk/by-id/google-disk-id'
+persistent_disk_device_id = '/dev/sdb'
+valid_vm_id = 'vm-id'
+invalid_vm_id = 'invalid-vm-id'
 
 class ComputeClient:
     class instances:
@@ -70,6 +77,22 @@ class ComputeClient:
         
         def aggregatedList_next(previous_request, previous_response):
             return None
+        
+        def get(self, project, zone, instance):
+            if instance == valid_vm_id:
+                http = HttpMock('tests/data/gcp/instances.get.json', {'status': '200'})
+                model = JsonModel()
+                uri = 'some_uri'
+                method = 'GET'
+                return HttpRequest(
+                    http,
+                    model.response,
+                    uri,
+                    method=method,
+                    headers={}
+                )
+            else:
+                return None
 
     class snapshots:
         def get(self, project, snapshot):
@@ -148,6 +171,18 @@ class ComputeClient:
                     method=method,
                     headers={}
                 )
+            elif disk == ephemeral_disk_name:
+                http = HttpMock('tests/data/gcp/disks.get.ephemeral.json', {'status': '200'})
+                model = JsonModel()
+                uri = 'some_uri'
+                method = 'GET'
+                return HttpRequest(
+                    http,
+                    model.response,
+                    uri,
+                    method=method,
+                    headers={}
+                )                
 
 class StorageClient:
     def get_bucket(self, container):
@@ -163,9 +198,26 @@ class Blob:
     def delete(self, client=None):
         return self
 
+def shell(command):
+    if command == ('readlink -e ' + ephemeral_disk_device_path):
+        return ephemeral_disk_device_id
+    elif command == ('readlink -e ' + persistent_disk_device_path):
+        return persistent_disk_device_id
+    elif command == ('cat /proc/mounts | grep ' + directory_persistent):
+        return persistent_disk_device_id + '1 ' + directory_persistent + ' ext4 rw,relatime,data=ordered 0 0'
+
+def mockglob(path):
+    return [path]
+
 class TestGcpClient:
     @classmethod
     def setup_class(cls):
+        cls.mock_glob_patcher = patch.object(glob, 'glob')
+        cls.mock_glob = cls.mock_glob_patcher.start()
+        cls.mock_glob.side_effect = mockglob
+        cls.mock_shell_patcher = patch.object(BaseClient, 'shell')
+        cls.mock_shell = cls.mock_shell_patcher.start()
+        cls.mock_shell.side_effect = shell
         cls.mock_lastop_patcher = patch.object(BaseClient, 'last_operation')
         cls.mock_lastop = cls.mock_lastop_patcher.start()
         cls.mock_sevice_account_patcher = patch('google.oauth2.service_account.Credentials.from_service_account_info')
@@ -191,6 +243,8 @@ class TestGcpClient:
 
     @classmethod
     def teardown_class(cls):
+        cls.mock_glob_patcher.stop()
+        cls.mock_shell_patcher.stop()
         cls.mock_lastop_patcher.stop()
         cls.mock_sevice_account_patcher.stop()
         cls.mock_compute_client_patcher.stop()
@@ -247,3 +301,27 @@ class TestGcpClient:
 
     def test_volume_exists_forbidden(self):
         pytest.raises(Exception, self.gcpClient.volume_exists, invalid_disk_name)
+
+    def test_get_attached_volumes_for_instance(self):
+        volume_list = self.gcpClient.get_attached_volumes_for_instance(valid_vm_id)
+        assert volume_list[0].id == 'vm-id'
+        assert volume_list[0].status == 'READY'
+        assert volume_list[0].size == '10'
+        assert volume_list[0].device == ephemeral_disk_device_id
+        assert volume_list[1].id == 'disk-id'
+        assert volume_list[1].status == 'READY'
+        assert volume_list[1].size == '40'
+        assert volume_list[1].device == persistent_disk_device_id
+        
+    def test_get_attached_volumes_for_instance_returns_empty(self):
+        assert self.gcpClient.get_attached_volumes_for_instance(invalid_vm_id) == []
+
+    def test_get_persistent_volume_for_instance(self):
+        volume = self.gcpClient.get_persistent_volume_for_instance(valid_vm_id)
+        assert volume.id == 'disk-id'
+        assert volume.status == 'READY'
+        assert volume.size == '40'
+        assert volume.device == persistent_disk_device_id
+
+    def test_get_persistent_volume_for_instance_returns_none(self):
+        assert self.gcpClient.get_persistent_volume_for_instance(invalid_vm_id) is None
