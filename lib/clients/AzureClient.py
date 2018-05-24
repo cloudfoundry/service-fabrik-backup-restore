@@ -131,6 +131,7 @@ class AzureClient(BaseClient):
             instance = self.compute_client.virtual_machines.get(
                 self.resource_group, instance_id)
             self.instance_location = instance.location
+            self.availability_zones = instance.zones
             volume_list = []
             for disk in instance.storage_profile.data_disks:
                 device = None
@@ -260,7 +261,8 @@ class AzureClient(BaseClient):
                         'creation_data': {
                             'create_option': DiskCreateOption.copy,
                             'source_uri': snapshot.id
-                        }
+                        },
+                        'zones': self.availability_zones
                     }
                 )
             else:
@@ -275,7 +277,8 @@ class AzureClient(BaseClient):
                         'creation_data': {
                             'create_option': DiskCreateOption.empty
                         },
-                        'account_type': StorageAccountTypes.standard_lrs
+                        'account_type': StorageAccountTypes.standard_lrs,
+                        'zones': self.availability_zones
                     }
                 )
 
