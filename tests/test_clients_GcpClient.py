@@ -49,16 +49,22 @@ bucket = {
 valid_snapshot_name = 'snapshot-id'
 not_found_snapshot_name = 'notfound-snapshot-id'
 invalid_snapshot_name = 'invalid-snapshot-id'
+delete_snapshot_name = 'delete-snapshot-id'
 valid_disk_name = 'disk-id'
 not_found_disk_name = 'notfound-disk-id'
 invalid_disk_name = 'invalid-disk-id'
 ephemeral_disk_name = 'vm-id' # ephemeral disk name is by default vm name
+ephemeral_disk_id = 'persistent-disk-0'
 ephemeral_disk_device_path = '/dev/disk/by-id/google-persistent-disk-0'
 ephemeral_disk_device_id = '/dev/sda'
 persistent_disk_device_path = '/dev/disk/by-id/google-disk-id'
 persistent_disk_device_id = '/dev/sdb'
 valid_vm_id = 'vm-id'
 invalid_vm_id = 'invalid-vm-id'
+valid_operation_id = 'operation-id'
+pending_operation_id = 'running-operation-id'
+invalid_operation_id = 'invalid-operation-id'
+error_operation_id = 'error-operation-id'
 
 class ComputeClient:
     class instances:
@@ -132,6 +138,32 @@ class ComputeClient:
                     method=method,
                     headers={}
                 )
+            if snapshot == delete_snapshot_name:
+                http = HttpMock('tests/data/gcp/snapshots.get.notfound.json', {'status': '404'})
+                model = JsonModel()
+                uri = 'some_uri'
+                method = 'GET'
+                return HttpRequest(
+                    http,
+                    model.response,
+                    uri,
+                    method=method,
+                    headers={}
+                )
+        
+        def delete(self, project, snapshot):
+            if snapshot == delete_snapshot_name or snapshot == valid_snapshot_name:
+                http = HttpMock('tests/data/gcp/snapshots.delete.json', {'status': '200'})
+                model = JsonModel()
+                uri = 'some_uri'
+                method = 'DELETE'
+                return HttpRequest(
+                    http,
+                    model.response,
+                    uri,
+                    method=method,
+                    headers={}
+                )
 
     class disks:
         def get(self, project, zone, disk):
@@ -182,7 +214,91 @@ class ComputeClient:
                     uri,
                     method=method,
                     headers={}
-                )                
+                )    
+
+        def createSnapshot(self, project, zone, disk, body):
+            if disk == valid_disk_name:
+                http = HttpMock('tests/data/gcp/disks.createSnapshot.json', {'status': '200'})
+                model = JsonModel()
+                uri = 'some_uri'
+                method = 'POST'
+                return HttpRequest(
+                    http,
+                    model.response,
+                    uri,
+                    method=method,
+                    headers={}
+                )
+            elif disk == invalid_disk_name:
+                http = HttpMock('tests/data/gcp/disks.createSnapshot1.json', {'status': '200'})
+                model = JsonModel()
+                uri = 'some_uri'
+                method = 'POST'
+                return HttpRequest(
+                    http,
+                    model.response,
+                    uri,
+                    method=method,
+                    headers={}
+                )
+
+    class zoneOperations:
+        def get(self, project, zone, operation):
+            if operation == valid_operation_id:
+                http = HttpMock('tests/data/gcp/zoneOperations.get.json', {'status': '200'})
+                model = JsonModel()
+                uri = 'some_uri'
+                method = 'GET'
+                return HttpRequest(
+                    http,
+                    model.response,
+                    uri,
+                    method=method,
+                    headers={}
+                )
+            elif operation == pending_operation_id:
+                http = HttpMock('tests/data/gcp/zoneOperations.get.running.json', {'status': '200'})
+                model = JsonModel()
+                uri = 'some_uri'
+                method = 'GET'
+                return HttpRequest(
+                    http,
+                    model.response,
+                    uri,
+                    method=method,
+                    headers={}
+                )
+            elif operation == error_operation_id:
+                http = HttpMock('tests/data/gcp/zoneOperations.get.error.json', {'status': '200'})
+                model = JsonModel()
+                uri = 'some_uri'
+                method = 'GET'
+                return HttpRequest(
+                    http,
+                    model.response,
+                    uri,
+                    method=method,
+                    headers={}
+                )
+            else:
+                return None
+    
+    class globalOperations:
+        def get(self, project, operation):
+            if operation == valid_operation_id:
+                http = HttpMock('tests/data/gcp/globalOperations.get.json', {'status': '200'})
+                model = JsonModel()
+                uri = 'some_uri'
+                method = 'GET'
+                return HttpRequest(
+                    http,
+                    model.response,
+                    uri,
+                    method=method,
+                    headers={}
+                )
+            else:
+                return None
 
 class StorageClient:
     def get_bucket(self, container):
@@ -207,14 +323,36 @@ def shell(command):
         return persistent_disk_device_id + '1 ' + directory_persistent + ' ext4 rw,relatime,data=ordered 0 0'
 
 def mockglob(path):
-    return [path]
+    if (valid_disk_name in path) or (ephemeral_disk_id in path):
+        return [path]
+    else:
+        return [path, 'dummy/' + path]
+
+def generate_name_by_prefix(prefix):
+    if prefix == 'sf-snapshot':
+        return valid_snapshot_name
+
+def get_device_of_volume(volume_id):
+    if volume_id == valid_disk_name:
+        return persistent_disk_device_id
+    else:
+        return None
 
 class TestGcpClient:
     @classmethod
     def setup_class(cls):
+        cls.mock_base_get_device_patcher = patch.object(BaseClient, '_get_device_of_volume')
+        cls.mock_base_get_device = cls.mock_base_get_device_patcher.start()
+        cls.mock_base_get_device.side_effect = get_device_of_volume
+        cls.mock_base_delete_snapshot_patcher = patch.object(BaseClient, 'delete_snapshot')
+        cls.mock_base_delete_snapshot = cls.mock_base_delete_snapshot_patcher.start()
+        cls.mock_base_delete_snapshot.return_value = True
         cls.mock_glob_patcher = patch.object(glob, 'glob')
         cls.mock_glob = cls.mock_glob_patcher.start()
         cls.mock_glob.side_effect = mockglob
+        cls.mock_generate_prefix_patcher = patch.object(BaseClient, 'generate_name_by_prefix')
+        cls.mock_generate_prefix = cls.mock_generate_prefix_patcher.start()
+        cls.mock_generate_prefix.side_effect = generate_name_by_prefix
         cls.mock_shell_patcher = patch.object(BaseClient, 'shell')
         cls.mock_shell = cls.mock_shell_patcher.start()
         cls.mock_shell.side_effect = shell
@@ -243,7 +381,10 @@ class TestGcpClient:
 
     @classmethod
     def teardown_class(cls):
+        cls.mock_base_get_device.stop()
+        cls.mock_base_delete_snapshot.stop()
         cls.mock_glob_patcher.stop()
+        cls.mock_generate_prefix_patcher.stop()
         cls.mock_shell_patcher.stop()
         cls.mock_lastop_patcher.stop()
         cls.mock_sevice_account_patcher.stop()
@@ -325,3 +466,53 @@ class TestGcpClient:
 
     def test_get_persistent_volume_for_instance_returns_none(self):
         assert self.gcpClient.get_persistent_volume_for_instance(invalid_vm_id) is None
+
+    def test_copy_snapshot(self):
+        snapshot = self.gcpClient._copy_snapshot(valid_snapshot_name)
+        assert snapshot.id == valid_snapshot_name
+        assert snapshot.status == 'READY'
+        assert snapshot.size == '40'
+        
+    def test_create_snapshot(self):
+        snapshot = self.gcpClient._create_snapshot(valid_disk_name, 'test-backup')
+        assert snapshot.id == valid_snapshot_name
+        assert snapshot.status == 'READY'
+        assert snapshot.size == '40'
+        self.gcpClient.output_json['snapshotId'] = valid_snapshot_name
+
+    def test_create_snapshot_exception(self):
+        pytest.raises(Exception, self.gcpClient._create_snapshot, invalid_disk_name)
+
+    def test_delete_snapshot(self):
+        assert self.gcpClient._delete_snapshot(delete_snapshot_name) == True
+    
+    def test_delete_snapshot_exception(self):
+        pytest.raises(Exception, self.gcpClient._delete_snapshot, valid_snapshot_name)
+
+    def test_get_mountpoint_returns_none(self):
+        assert self.gcpClient.get_mountpoint(invalid_disk_name, "1") is None
+    
+    def test_get_mountpoint_without_partition(self):
+        assert self.gcpClient.get_mountpoint(valid_disk_name) == persistent_disk_device_id
+
+    def test_get_mountpoint(self):
+        assert self.gcpClient.get_mountpoint(valid_disk_name, "1") == (persistent_disk_device_id + "1")
+
+    def test_find_volume_device(self):
+       assert self.gcpClient._find_volume_device(valid_disk_name) == persistent_disk_device_id
+    
+    def test_find_volume_device_returns_none(self):
+       assert self.gcpClient._find_volume_device('invalid_disk_name') is None
+
+    def test_get_operation_status_zonal_operation(self):
+        assert self.gcpClient.get_operation_status(valid_operation_id, True) == 'DONE'
+    
+    def test_get_operation_status_global_operation(self):
+        assert self.gcpClient.get_operation_status(valid_operation_id, False) == 'DONE'
+    
+    def test_get_operation_status_zonal_operation_pending(self):
+        assert self.gcpClient.get_operation_status(pending_operation_id, True) == 'RUNNING'
+    
+    def test_get_operation_status_zonal_operation_error(self):
+        pytest.raises(Exception, self.gcpClient.get_operation_status, error_operation_id, True)
+    

@@ -1,0 +1,14 @@
+{
+    "kind": "compute#operation",
+    "id": "1111",
+    "name": "operation-id",
+    "zone": "https://www.something.com/compute/v1/projects/gcp-dev/zones/europe-west1-c",
+    "operationType": "createSnapshot",
+    "targetLink": "https://www.something.com/compute/v1/projects/gcp-dev/zones/europe-west1-c/disks/disk-id",
+    "targetId": "4444",
+    "status": "PENDING",
+    "user": "abc@xyz.com",
+    "progress": 0,
+    "insertTime": "2018-05-24T07:39:47.648-07:00",
+    "selfLink": "https://www.something.com/compute/v1/projects/gcp-dev/zones/europe-west1-c/operations/operation-id"
+}
