@@ -1,0 +1,15 @@
+{
+    "kind": "compute#operation",
+    "id": "5555",
+    "name": "operation-id",
+    "zone": "https://www.something.com/compute/v1/projects/gcp-dev/zones/europe-west1-b",
+    "operationType": "attachDisk",
+    "targetLink": "https://www.something.com/compute/v1/projects/gcp-dev/zones/europe-west1-b/instances/vm-id",
+    "targetId": "3333",
+    "status": "PENDING",
+    "user": "abc@xyz.com",
+    "progress": 0,
+    "insertTime": "2018-05-27T04:35:46.490-07:00",
+    "selfLink": "https://www.something.com/compute/v1/projects/gcp-dev/zones/europe-west1-b/operations/operation-id"
+}
+   

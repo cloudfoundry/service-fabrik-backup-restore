@@ -8,7 +8,8 @@ from googleapiclient.http import HttpRequest
 from googleapiclient.model import JsonModel
 from googleapiclient.http import HttpMock
 from google.cloud.exceptions import NotFound
-from google.cloud.exceptions import Forbidden
+from google.cloud.exceptions import GoogleCloudError
+from google.cloud.storage import Blob
 from lib.models.Snapshot import Snapshot
 from lib.models.Volume import Volume
 
@@ -53,6 +54,8 @@ delete_snapshot_name = 'delete-snapshot-id'
 valid_disk_name = 'disk-id'
 not_found_disk_name = 'notfound-disk-id'
 invalid_disk_name = 'invalid-disk-id'
+delete_disk_name = 'delete-disk-id'
+some_disk_name = 'some-disk-id'
 ephemeral_disk_name = 'vm-id' # ephemeral disk name is by default vm name
 ephemeral_disk_id = 'persistent-disk-0'
 ephemeral_disk_device_path = '/dev/disk/by-id/google-persistent-disk-0'
@@ -65,6 +68,8 @@ valid_operation_id = 'operation-id'
 pending_operation_id = 'running-operation-id'
 invalid_operation_id = 'invalid-operation-id'
 error_operation_id = 'error-operation-id'
+valid_blob_path = '/tmp/valid-blob.txt'
+invalid_blob_path = '/tmp/invalid-blob.txt'
 
 class ComputeClient:
     class instances:
@@ -99,6 +104,34 @@ class ComputeClient:
                 )
             else:
                 return None
+        
+        def attachDisk(self, project, zone, instance, body):
+            if instance == valid_vm_id:
+                http = HttpMock('tests/data/gcp/instances.attachDisk.json', {'status': '200'})
+                model = JsonModel()
+                uri = 'some_uri'
+                method = 'POST'
+                return HttpRequest(
+                    http,
+                    model.response,
+                    uri,
+                    method=method,
+                    headers={}
+                )
+
+        def detachDisk(self, project, zone, instance, deviceName):
+            if instance == valid_vm_id:
+                http = HttpMock('tests/data/gcp/instances.detachDisk.json', {'status': '200'})
+                model = JsonModel()
+                uri = 'some_uri'
+                method = 'POST'
+                return HttpRequest(
+                    http,
+                    model.response,
+                    uri,
+                    method=method,
+                    headers={}
+                )
 
     class snapshots:
         def get(self, project, snapshot):
@@ -179,6 +212,18 @@ class ComputeClient:
                     method=method,
                     headers={}
                 )
+            if disk == some_disk_name:
+                http = HttpMock('tests/data/gcp/disks.get1.json', {'status': '200'})
+                model = JsonModel()
+                uri = 'some_uri'
+                method = 'GET'
+                return HttpRequest(
+                    http,
+                    model.response,
+                    uri,
+                    method=method,
+                    headers={}
+                )
             elif disk == not_found_disk_name:
                 http = HttpMock('tests/data/gcp/disks.get.notfound.json', {'status': '404'})
                 model = JsonModel()
@@ -214,7 +259,33 @@ class ComputeClient:
                     uri,
                     method=method,
                     headers={}
-                )    
+                )   
+            elif disk == delete_disk_name:
+                http = HttpMock('tests/data/gcp/disks.get.notfound.json', {'status': '404'})
+                model = JsonModel()
+                uri = 'some_uri'
+                method = 'GET'
+                return HttpRequest(
+                    http,
+                    model.response,
+                    uri,
+                    method=method,
+                    headers={}
+                )
+        
+        def delete(self, project, zone, disk):
+            if disk == delete_disk_name or disk == valid_disk_name:
+                http = HttpMock('tests/data/gcp/disks.delete.json', {'status': '200'})
+                model = JsonModel()
+                uri = 'some_uri'
+                method = 'DELETE'
+                return HttpRequest(
+                    http,
+                    model.response,
+                    uri,
+                    method=method,
+                    headers={}
+                )
 
         def createSnapshot(self, project, zone, disk, body):
             if disk == valid_disk_name:
@@ -231,6 +302,34 @@ class ComputeClient:
                 )
             elif disk == invalid_disk_name:
                 http = HttpMock('tests/data/gcp/disks.createSnapshot1.json', {'status': '200'})
+                model = JsonModel()
+                uri = 'some_uri'
+                method = 'POST'
+                return HttpRequest(
+                    http,
+                    model.response,
+                    uri,
+                    method=method,
+                    headers={}
+                )
+
+        def insert(self, project, zone, body):
+            if body['sourceSnapshot'] == 'global/snapshots/{}'.format(
+                    valid_snapshot_name):
+                http = HttpMock('tests/data/gcp/disks.insert.json', {'status': '200'})
+                model = JsonModel()
+                uri = 'some_uri'
+                method = 'POST'
+                return HttpRequest(
+                    http,
+                    model.response,
+                    uri,
+                    method=method,
+                    headers={}
+                )
+            elif body['sourceSnapshot'] == 'global/snapshots/{}'.format(
+                    invalid_snapshot_name):
+                http = HttpMock('tests/data/gcp/disks.insert1.json', {'status': '200'})
                 model = JsonModel()
                 uri = 'some_uri'
                 method = 'POST'
@@ -307,12 +406,18 @@ class StorageClient:
         elif container == invalid_container:
             raise NotFound()
 
-class Blob:
-    def upload_from_string(self, data, content_type='text/plain', client=None, predefined_acl=None):
+def upload_from_filename(filename):
+    if filename == valid_blob_path:
         pass
+    else:
+        raise GoogleCloudError('Error')
+
     
-    def delete(self, client=None):
-        return self
+def download_to_filename(filename):
+    if filename == valid_blob_path:
+        pass
+    else:
+        raise GoogleCloudError("Error")
 
 def shell(command):
     if command == ('readlink -e ' + ephemeral_disk_device_path):
@@ -331,6 +436,8 @@ def mockglob(path):
 def generate_name_by_prefix(prefix):
     if prefix == 'sf-snapshot':
         return valid_snapshot_name
+    elif prefix == 'sf-disk':
+        return valid_disk_name
 
 def get_device_of_volume(volume_id):
     if volume_id == valid_disk_name:
@@ -347,6 +454,9 @@ class TestGcpClient:
         cls.mock_base_delete_snapshot_patcher = patch.object(BaseClient, 'delete_snapshot')
         cls.mock_base_delete_snapshot = cls.mock_base_delete_snapshot_patcher.start()
         cls.mock_base_delete_snapshot.return_value = True
+        cls.mock_base_delete_volume_patcher = patch.object(BaseClient, 'delete_volume')
+        cls.mock_base_delete_volume = cls.mock_base_delete_volume_patcher.start()
+        cls.mock_base_delete_volume.return_value = True
         cls.mock_glob_patcher = patch.object(glob, 'glob')
         cls.mock_glob = cls.mock_glob_patcher.start()
         cls.mock_glob.side_effect = mockglob
@@ -362,20 +472,23 @@ class TestGcpClient:
         cls.mock_sevice_account = cls.mock_sevice_account_patcher.start()
         cls.mock_compute_client_patcher = patch('googleapiclient.discovery.build')
         cls.mock_compute_client = cls.mock_compute_client_patcher.start()
+        cls.mock_compute_client.return_value = ComputeClient()
         cls.mock_storage_client_patcher = patch('google.cloud.storage.Client')
         cls.mock_storage_client = cls.mock_storage_client_patcher.start()
+        cls.mock_storage_client.return_value = StorageClient()
         cls.mock_blob_upload_patcher = patch('google.cloud.storage.Blob.upload_from_string')
         cls.mock_blob_upload = cls.mock_blob_upload_patcher.start()
         cls.mock_blob_delete_patcher = patch('google.cloud.storage.Blob.delete')
         cls.mock_blob_delete = cls.mock_blob_delete_patcher.start()
+        cls.mock_blob_upload_from_filename_patcher = patch.object(Blob, 'upload_from_filename')
+        cls.mock_blob_upload_from_filename = cls.mock_blob_upload_from_filename_patcher.start()
+        cls.mock_blob_upload_from_filename.side_effect = upload_from_filename
+        cls.mock_blob_download_to_filename_patcher = patch.object(Blob, 'download_to_filename')
+        cls.mock_blob_download_to_filename = cls.mock_blob_download_to_filename_patcher.start()
+        cls.mock_blob_download_to_filename.side_effect = download_to_filename
         os.environ['SF_BACKUP_RESTORE_LOG_DIRECTORY'] = log_dir
         os.environ['SF_BACKUP_RESTORE_LAST_OPERATION_DIRECTORY'] = log_dir
-        cls.mock_compute_client.return_value = ComputeClient()
-        cls.mock_storage_client.return_value = StorageClient()
-        data = 'random data'
-        blob = Blob()
-        cls.mock_blob_upload.return_value = blob.upload_from_string(data)
-        cls.mock_blob_delete.return_value = blob.delete()
+        
         cls.gcpClient = GcpClient(operation_name, configuration, directory_persistent, directory_work_list,
             poll_delay_time, poll_maximum_time)
 
@@ -383,6 +496,7 @@ class TestGcpClient:
     def teardown_class(cls):
         cls.mock_base_get_device.stop()
         cls.mock_base_delete_snapshot.stop()
+        cls.mock_base_delete_volume.stop()
         cls.mock_glob_patcher.stop()
         cls.mock_generate_prefix_patcher.stop()
         cls.mock_shell_patcher.stop()
@@ -392,7 +506,9 @@ class TestGcpClient:
         cls.mock_storage_client_patcher.stop()
         cls.mock_blob_upload_patcher.stop()
         cls.mock_blob_delete_patcher.stop()
-
+        cls.mock_blob_upload_from_filename_patcher.stop()
+        cls.mock_blob_download_to_filename_patcher.stop()
+        
     def test_create_gcp_client(self):
         assert self.gcpClient.project_id == project_id
         assert self.gcpClient.compute_client is not None
@@ -516,3 +632,92 @@ class TestGcpClient:
     def test_get_operation_status_zonal_operation_error(self):
         pytest.raises(Exception, self.gcpClient.get_operation_status, error_operation_id, True)
     
+    def test_create_volume(self):
+        volume = self.gcpClient._create_volume('40', valid_snapshot_name)
+        assert volume.id == valid_disk_name
+        assert volume.status == 'READY'
+        assert volume.size == '40'
+    
+    def test_create_volume_exception(self):
+        pytest.raises(Exception, self.gcpClient._create_volume, '40', invalid_snapshot_name)
+
+    def test_delete_volume(self):
+        assert self.gcpClient._delete_volume(delete_disk_name) == True
+    
+    def test_delete_volume_exception(self):
+        pytest.raises(Exception, self.gcpClient._delete_volume, valid_disk_name)
+
+    def test_create_attachment(self):
+        attachment = self.gcpClient._create_attachment(valid_disk_name, valid_vm_id)
+        assert attachment.id == 0
+        assert attachment.instance_id == valid_vm_id
+        assert attachment.volume_id == valid_disk_name
+    
+    def test_create_attachment_exception(self):
+        pytest.raises(Exception, self.gcpClient._create_attachment, some_disk_name, valid_vm_id)
+
+    def test_delete_attachment(self):
+        assert self.gcpClient._delete_attachment(valid_disk_name, valid_vm_id) == True
+    
+    def test_delete_attachment_exception(self):
+        pytest.raises(Exception, self.gcpClient._delete_attachment, invalid_disk_name, invalid_vm_id)
+
+    def test_upload_to_blobstore(self):
+        assert self.gcpClient._upload_to_blobstore(valid_blob_path, 'blob') == True
+        
+    def test_upload_to_blobstore_raises_exception(self):
+        pytest.raises(Exception, self.gcpClient._upload_to_blobstore, invalid_blob_path, 'blob')
+
+    def test_upload_to_blobstore_raises_exception_on_invalid_container(self):
+        prev_container = self.gcpClient.container
+        self.gcpClient.container = None
+        pytest.raises(Exception, self.gcpClient._upload_to_blobstore, invalid_blob_path, 'blob')
+        self.gcpClient.container = prev_container
+        
+    def test_download_from_blobstore(self):
+        assert self.gcpClient._download_from_blobstore('blob', valid_blob_path) == True
+        
+    def test_download_from_blobstore_raises_exception(self):
+        pytest.raises(Exception, self.gcpClient._download_from_blobstore, 'blob', invalid_blob_path)
+
+    def test_download_from_blobstore_raises_exception_on_invalid_container(self):
+        prev_container = self.gcpClient.container
+        self.gcpClient.container = None
+        pytest.raises(Exception, self.gcpClient._download_from_blobstore, 'blob', invalid_blob_path)
+        self.gcpClient.container = prev_container
+
+class TestGcpClientExceptions:
+    @classmethod
+    def setup_class(cls):
+        cls.mock_sevice_account_patcher = patch('google.oauth2.service_account.Credentials.from_service_account_info')
+        cls.mock_sevice_account = cls.mock_sevice_account_patcher.start()
+        cls.mock_compute_client_patcher = patch('googleapiclient.discovery.build')
+        cls.mock_compute_client = cls.mock_compute_client_patcher.start()
+        cls.mock_compute_client.return_value = ComputeClient()
+        cls.mock_storage_client_patcher = patch('google.cloud.storage.Client')
+        cls.mock_storage_client = cls.mock_storage_client_patcher.start()
+        cls.mock_storage_client.return_value = StorageClient()
+
+    @classmethod
+    def teardown_class(cls):
+        cls.mock_sevice_account_patcher.stop()
+        cls.mock_compute_client_patcher.stop()
+        cls.mock_storage_client_patcher.stop()
+
+    def test_gcp_client_raises_container_not_found_exception(self):
+        with pytest.raises(Exception, message='Could not find or access the given container.'):
+            GcpClient(operation_name, configuration, directory_persistent, directory_work_list,
+                    poll_delay_time, poll_maximum_time)
+
+    def test_gcp_client_raises_availability_zone_exception(self):
+        mock_blob_upload_patcher = patch('google.cloud.storage.Blob.upload_from_string')
+        mock_blob_upload = mock_blob_upload_patcher.start()
+        mock_blob_delete_patcher = patch('google.cloud.storage.Blob.delete')
+        mock_blob_delete = mock_blob_delete_patcher.start()
+        configuration['instance_id'] = invalid_vm_id
+        with pytest.raises(Exception, message='Could not retrieve the availability zone of the instance.'):
+            GcpClient(operation_name, configuration, directory_persistent, directory_work_list,
+                    poll_delay_time, poll_maximum_time)
+        mock_blob_upload_patcher.stop()
+        mock_blob_delete_patcher.stop()
+        

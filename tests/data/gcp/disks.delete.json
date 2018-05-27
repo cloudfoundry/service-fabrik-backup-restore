@@ -1,0 +1,15 @@
+{
+    "kind": "compute#operation",
+    "id": "6666",
+    "name": "operation-id",
+    "zone": "https://www.something.com/compute/v1/projects/gcp-dev/zones/europe-west1-c",
+    "operationType": "delete",
+    "targetLink": "https://www.something.com/compute/v1/projects/gcp-dev/zones/europe-west1-c/disks/disk-id",
+    "targetId": "2222",
+    "status": "PENDING",
+    "user": "abc@xyz.com",
+    "progress": 0,
+    "insertTime": "2018-05-27T04:00:41.631-07:00",
+    "selfLink": "https://www.something.com/compute/v1/projects/gcp-dev/zones/europe-west1-c/operations/operation-id"
+}
+   
