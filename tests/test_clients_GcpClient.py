@@ -445,70 +445,56 @@ def get_device_of_volume(volume_id):
     else:
         return None
 
+def create_start_patcher(patch_function, patch_object=None, return_value=None, side_effect=None):
+    if patch_object != None:
+        patcher = patch.object(patch_object, patch_function)
+    else:
+        patcher = patch(patch_function)
+
+    patcher_start = patcher.start()
+    if return_value != None:
+        patcher_start.return_value = return_value
+    
+    if side_effect != None:
+        patcher_start.side_effect = side_effect
+    
+    return patcher
+
+def stop_all_patchers(patchers):
+    for patcher in patchers:
+        patcher.stop()
+
 class TestGcpClient:
+    # Store all patchers
+    patchers = []
+
     @classmethod
-    def setup_class(cls):
-        cls.mock_base_get_device_patcher = patch.object(BaseClient, '_get_device_of_volume')
-        cls.mock_base_get_device = cls.mock_base_get_device_patcher.start()
-        cls.mock_base_get_device.side_effect = get_device_of_volume
-        cls.mock_base_delete_snapshot_patcher = patch.object(BaseClient, 'delete_snapshot')
-        cls.mock_base_delete_snapshot = cls.mock_base_delete_snapshot_patcher.start()
-        cls.mock_base_delete_snapshot.return_value = True
-        cls.mock_base_delete_volume_patcher = patch.object(BaseClient, 'delete_volume')
-        cls.mock_base_delete_volume = cls.mock_base_delete_volume_patcher.start()
-        cls.mock_base_delete_volume.return_value = True
-        cls.mock_glob_patcher = patch.object(glob, 'glob')
-        cls.mock_glob = cls.mock_glob_patcher.start()
-        cls.mock_glob.side_effect = mockglob
-        cls.mock_generate_prefix_patcher = patch.object(BaseClient, 'generate_name_by_prefix')
-        cls.mock_generate_prefix = cls.mock_generate_prefix_patcher.start()
-        cls.mock_generate_prefix.side_effect = generate_name_by_prefix
-        cls.mock_shell_patcher = patch.object(BaseClient, 'shell')
-        cls.mock_shell = cls.mock_shell_patcher.start()
-        cls.mock_shell.side_effect = shell
-        cls.mock_lastop_patcher = patch.object(BaseClient, 'last_operation')
-        cls.mock_lastop = cls.mock_lastop_patcher.start()
-        cls.mock_sevice_account_patcher = patch('google.oauth2.service_account.Credentials.from_service_account_info')
-        cls.mock_sevice_account = cls.mock_sevice_account_patcher.start()
-        cls.mock_compute_client_patcher = patch('googleapiclient.discovery.build')
-        cls.mock_compute_client = cls.mock_compute_client_patcher.start()
-        cls.mock_compute_client.return_value = ComputeClient()
-        cls.mock_storage_client_patcher = patch('google.cloud.storage.Client')
-        cls.mock_storage_client = cls.mock_storage_client_patcher.start()
-        cls.mock_storage_client.return_value = StorageClient()
-        cls.mock_blob_upload_patcher = patch('google.cloud.storage.Blob.upload_from_string')
-        cls.mock_blob_upload = cls.mock_blob_upload_patcher.start()
-        cls.mock_blob_delete_patcher = patch('google.cloud.storage.Blob.delete')
-        cls.mock_blob_delete = cls.mock_blob_delete_patcher.start()
-        cls.mock_blob_upload_from_filename_patcher = patch.object(Blob, 'upload_from_filename')
-        cls.mock_blob_upload_from_filename = cls.mock_blob_upload_from_filename_patcher.start()
-        cls.mock_blob_upload_from_filename.side_effect = upload_from_filename
-        cls.mock_blob_download_to_filename_patcher = patch.object(Blob, 'download_to_filename')
-        cls.mock_blob_download_to_filename = cls.mock_blob_download_to_filename_patcher.start()
-        cls.mock_blob_download_to_filename.side_effect = download_to_filename
+    def setup_class(self):
+        self.patchers.append(create_start_patcher(patch_function='_get_device_of_volume', patch_object=BaseClient, side_effect=get_device_of_volume))
+        self.patchers.append(create_start_patcher(patch_function='delete_snapshot', patch_object=BaseClient, return_value=True))
+        self.patchers.append(create_start_patcher(patch_function='delete_volume', patch_object=BaseClient, return_value=True))
+        self.patchers.append(create_start_patcher(patch_function='glob', patch_object=glob, side_effect=mockglob))
+        self.patchers.append(create_start_patcher(patch_function='generate_name_by_prefix', patch_object=BaseClient, side_effect=generate_name_by_prefix))
+        self.patchers.append(create_start_patcher(patch_function='shell', patch_object=BaseClient, side_effect=shell))
+        self.patchers.append(create_start_patcher(patch_function='last_operation', patch_object=BaseClient))
+        self.patchers.append(create_start_patcher(patch_function='google.oauth2.service_account.Credentials.from_service_account_info'))
+        self.patchers.append(create_start_patcher(patch_function='googleapiclient.discovery.build', return_value=ComputeClient()))
+        self.patchers.append(create_start_patcher(patch_function='google.cloud.storage.Client', return_value=StorageClient()))
+        self.patchers.append(create_start_patcher(patch_function='google.cloud.storage.Blob.upload_from_string'))
+        self.patchers.append(create_start_patcher(patch_function='google.cloud.storage.Blob.delete'))
+        self.patchers.append(create_start_patcher(patch_function='upload_from_filename', patch_object=Blob, side_effect=upload_from_filename))
+        self.patchers.append(create_start_patcher(patch_function='download_to_filename', patch_object=Blob, side_effect=download_to_filename))
+
         os.environ['SF_BACKUP_RESTORE_LOG_DIRECTORY'] = log_dir
         os.environ['SF_BACKUP_RESTORE_LAST_OPERATION_DIRECTORY'] = log_dir
         
-        cls.gcpClient = GcpClient(operation_name, configuration, directory_persistent, directory_work_list,
+        self.gcpClient = GcpClient(operation_name, configuration, directory_persistent, directory_work_list,
             poll_delay_time, poll_maximum_time)
 
     @classmethod
-    def teardown_class(cls):
-        cls.mock_base_get_device.stop()
-        cls.mock_base_delete_snapshot.stop()
-        cls.mock_base_delete_volume.stop()
-        cls.mock_glob_patcher.stop()
-        cls.mock_generate_prefix_patcher.stop()
-        cls.mock_shell_patcher.stop()
-        cls.mock_lastop_patcher.stop()
-        cls.mock_sevice_account_patcher.stop()
-        cls.mock_compute_client_patcher.stop()
-        cls.mock_storage_client_patcher.stop()
-        cls.mock_blob_upload_patcher.stop()
-        cls.mock_blob_delete_patcher.stop()
-        cls.mock_blob_upload_from_filename_patcher.stop()
-        cls.mock_blob_download_to_filename_patcher.stop()
-        
+    def teardown_class(self):
+        stop_all_patchers(self.patchers)
+
     def test_create_gcp_client(self):
         assert self.gcpClient.project_id == project_id
         assert self.gcpClient.compute_client is not None
@@ -687,22 +673,18 @@ class TestGcpClient:
         self.gcpClient.container = prev_container
 
 class TestGcpClientExceptions:
-    @classmethod
-    def setup_class(cls):
-        cls.mock_sevice_account_patcher = patch('google.oauth2.service_account.Credentials.from_service_account_info')
-        cls.mock_sevice_account = cls.mock_sevice_account_patcher.start()
-        cls.mock_compute_client_patcher = patch('googleapiclient.discovery.build')
-        cls.mock_compute_client = cls.mock_compute_client_patcher.start()
-        cls.mock_compute_client.return_value = ComputeClient()
-        cls.mock_storage_client_patcher = patch('google.cloud.storage.Client')
-        cls.mock_storage_client = cls.mock_storage_client_patcher.start()
-        cls.mock_storage_client.return_value = StorageClient()
+    # Store all patchers
+    patchers = []
 
     @classmethod
-    def teardown_class(cls):
-        cls.mock_sevice_account_patcher.stop()
-        cls.mock_compute_client_patcher.stop()
-        cls.mock_storage_client_patcher.stop()
+    def setup_class(self):
+        self.patchers.append(create_start_patcher(patch_function='google.oauth2.service_account.Credentials.from_service_account_info'))
+        self.patchers.append(create_start_patcher(patch_function='googleapiclient.discovery.build', return_value=ComputeClient()))
+        self.patchers.append(create_start_patcher(patch_function='google.cloud.storage.Client', return_value=StorageClient()))
+
+    @classmethod
+    def teardown_class(self):
+        stop_all_patchers(self.patchers)
 
     def test_gcp_client_raises_container_not_found_exception(self):
         with pytest.raises(Exception, message='Could not find or access the given container.'):
@@ -710,10 +692,8 @@ class TestGcpClientExceptions:
                     poll_delay_time, poll_maximum_time)
 
     def test_gcp_client_raises_availability_zone_exception(self):
-        mock_blob_upload_patcher = patch('google.cloud.storage.Blob.upload_from_string')
-        mock_blob_upload = mock_blob_upload_patcher.start()
-        mock_blob_delete_patcher = patch('google.cloud.storage.Blob.delete')
-        mock_blob_delete = mock_blob_delete_patcher.start()
+        mock_blob_upload_patcher = create_start_patcher(patch_function='google.cloud.storage.Blob.upload_from_string')
+        mock_blob_delete_patcher = create_start_patcher(patch_function='google.cloud.storage.Blob.delete')
         configuration['instance_id'] = invalid_vm_id
         with pytest.raises(Exception, message='Could not retrieve the availability zone of the instance.'):
             GcpClient(operation_name, configuration, directory_persistent, directory_work_list,
