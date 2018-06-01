@@ -52,7 +52,14 @@ parameters_restore = {
     'instance_id': 'the ID of the AWS/OpenStack instance to be restored',
     'secret': 'the password used for the decryption of the backup set',
     'container': 'a container in the object storage from which to restore data',
-    'job_name': 'the name of the service job under which it is registered to monit'
+    'job_name': 'the name of the service job under which it is registered to monit',
+    'agent_id': 'the agent id, provided by spec.id',
+    'agent_ip': 'IP of the agent VM'
+}
+
+parameters_restore_optional = {
+    'agent_id': 'the agent id',
+    'agent_ip': 'IP of the agent VM'
 }
 
 
@@ -67,6 +74,8 @@ def _get_parameters_backup():
 def _get_parameters_restore():
     return merge_dict(parameters, parameters_restore)
 
+def _get_parameters_restore_optional():
+    return parameters_restore_optional
 
 def parse_options(type):
     """Parse the required command line options for the given operation type.
@@ -87,8 +96,10 @@ def parse_options(type):
                                 help=description, required=True)
     elif type == 'restore':
         for name, description in _get_parameters_restore().items():
-            parser.add_argument('--{}'.format(name),
-                                help=description, required=True)
+            if name in _get_parameters_restore_optional().keys():
+            	parser.add_argument('--{}'.format(name), help=description, required=False)
+            else:
+                parser.add_argument('--{}'.format(name), help=description, required=True)
     else:
         raise Exception('Use either \'backup\' or \'restore\' as type.')
 
