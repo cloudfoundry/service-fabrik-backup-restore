@@ -75,7 +75,7 @@ def _get_parameters_restore():
     return merge_dict(parameters, parameters_restore)
 
 def _get_parameters_restore_optional():
-    return merge_dict(parameters, parameters_restore_optional)
+    return parameters_restore_optional
 
 def parse_options(type):
     """Parse the required command line options for the given operation type.
