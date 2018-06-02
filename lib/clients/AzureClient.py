@@ -137,9 +137,9 @@ class AzureClient(BaseClient):
             return instance.location
         except Exception as error:
             self.logger.error(
-                '[Azure] ERROR: Unable to find or location for instance_id {}.{}'.format(
+                '[Azure] ERROR: Unable to get location for instance_id {}.{}'.format(
                     instance_id, error))
-            return none
+            return None
 
     def get_attached_volumes_for_instance(self, instance_id):
         try:
