@@ -1,0 +1,24 @@
+{
+    "kind": "compute#operation",
+    "id": "1111",
+    "name": "error-operation-id",
+    "zone": "https://www.something.com/compute/v1/projects/gcp-dev/zones/europe-west1-c",
+    "operationType": "createSnapshot",
+    "targetLink": "https://www.something.com/compute/v1/projects/gcp-dev/zones/europe-west1-c/disks/disk-id",
+    "targetId": "4444",
+    "status": "DONE",
+    "user": "abc@xyz.com",
+    "progress": 100,
+    "insertTime": "2018-05-24T07:39:47.648-07:00",
+    "startTime": "2018-05-24T07:39:48.155-07:00",
+    "endTime": "2018-05-24T07:39:59.868-07:00",
+    "selfLink": "https://www.something.com/compute/v1/projects/gcp-dev/zones/europe-west1-c/operations/error-operation-id",
+    "error": {
+        "errors": {
+          "code": "404",
+          "message": "NOT FOUND"
+        }
+    },
+    "httpErrorStatusCode": "404",
+    "httpErrorMessage": "NOT FOUND"
+}

@@ -1,0 +1,79 @@
+{
+    "kind": "compute#instance",
+    "id": "2222",
+    "creationTimestamp": "2018-04-19T03:05:09.655-07:00",
+    "name": "vm-id",
+    "description": "VM",
+    "tags": {
+     "items": [
+      "test-vm"
+     ],
+     "fingerprint": "xxxx"
+    },
+    "machineType": "https://www.something.com/compute/v1/projects/gcp-dev/zones/europe-west1-c/machineTypes/custom-2-4096",
+    "status": "RUNNING",
+    "zone": "https://www.something.com/compute/v1/projects/gcp-dev/zones/europe-west1-c",
+    "networkInterfaces": [
+     {
+      "kind": "compute#networkInterface",
+      "network": "https://www.something.com/compute/v1/projects/gcp-dev/global/networks/network-gcp-dev",
+      "subnetwork": "https://www.something.com/compute/v1/projects/gcp-dev/regions/europe-west1/subnetworks/subnetwork-gcp-dev",
+      "networkIP": "x.x.x.x",
+      "name": "nic0",
+      "fingerprint": "zzzz"
+     }
+    ],
+    "disks": [
+     {
+      "kind": "compute#attachedDisk",
+      "type": "PERSISTENT",
+      "mode": "READ_WRITE",
+      "source": "https://www.something.com/compute/v1/projects/gcp-dev/zones/europe-west1-c/disks/vm-id",
+      "deviceName": "persistent-disk-0",
+      "index": 0,
+      "boot": true,
+      "autoDelete": true,
+      "interface": "SCSI"
+     },
+     {
+      "kind": "compute#attachedDisk",
+      "type": "PERSISTENT",
+      "mode": "READ_WRITE",
+      "source": "https://www.something.com/compute/v1/projects/gcp-dev/zones/europe-west1-c/disks/disk-id",
+      "deviceName": "disk-id",
+      "index": 1,
+      "boot": false,
+      "autoDelete": false,
+      "interface": "SCSI"
+     }
+    ],
+    "metadata": {
+     "kind": "compute#metadata",
+     "fingerprint": "iiii",
+     "items": [
+      {
+       "key": "index",
+       "value": "1"
+      },
+      {
+       "key": "created_at",
+       "value": "2018-04-19T10:05:36Z"
+      }
+     ]
+    },
+    "selfLink": "https://www.something.com/compute/v1/projects/gcp-dev/zones/europe-west1-c/instances/vm-id",
+    "scheduling": {
+     "onHostMaintenance": "MIGRATE",
+     "automaticRestart": true,
+     "preemptible": false
+    },
+    "cpuPlatform": "Intel",
+    "labels": {
+     "id": "abcd",
+     "index": "n1"
+    },
+    "labelFingerprint": "tttt",
+    "startRestricted": false,
+    "deletionProtection": false
+}
+   

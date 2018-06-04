@@ -1,0 +1,19 @@
+{
+    "kind": "compute#disk",
+    "id": "7777",
+    "creationTimestamp": "2018-04-19T03:05:09.703-07:00",
+    "name": "vm-id",
+    "sizeGb": "10",
+    "zone": "https://www.something.com/compute/v1/projects/gcp-dev/zones/europe-west1-c",
+    "status": "READY",
+    "selfLink": "https://www.something.com/compute/v1/projects/gcp-dev/zones/europe-west1-c/disks/vm-id",
+    "sourceImage": "https://www.something.com/compute/v1/projects/gcp-dev/global/images/stemcell-id",
+    "sourceImageId": "4444",
+    "type": "https://www.something.com/compute/v1/projects/gcp-dev/zones/europe-west1-c/diskTypes/pd-ssd",
+    "lastAttachTimestamp": "2018-04-19T03:05:09.705-07:00",
+    "users": [
+     "https://www.something.com/compute/v1/projects/gcp-dev/zones/europe-west1-c/instances/vm-id"
+    ],
+    "labelFingerprint": "ssss"
+}
+   

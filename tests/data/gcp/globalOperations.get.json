@@ -1,0 +1,16 @@
+{
+    "kind": "compute#operation",
+    "id": "3333",
+    "name": "operation-id",
+    "operationType": "delete",
+    "targetLink": "https://www.something.com/compute/v1/projects/gcp-dev/global/snapshots/delete-snapshot-id",
+    "targetId": "5555",
+    "status": "DONE",
+    "user": "abc@xyz.com",
+    "progress": 100,
+    "insertTime": "2018-05-24T09:48:40.537-07:00",
+    "startTime": "2018-05-24T09:48:41.034-07:00",
+    "endTime": "2018-05-24T09:48:42.642-07:00",
+    "selfLink": "https://www.something.com/compute/v1/projects/gcp-dev/global/operations/operation-id"
+}
+   
