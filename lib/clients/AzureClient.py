@@ -45,7 +45,11 @@ class AzureClient(BaseClient):
             msg = 'Could not determine SCSI host number for data volume'
             self.last_operation(msg, 'failed')
             raise Exception(msg)
-        self.instance_location = None
+        self.instance_location = self.get_instance_location(configuration['instance_id'])
+        if not self.instance_location:
+            msg = 'Could not retrieve the location of the instance.'
+            self.last_operation(msg, 'failed')
+            raise Exception(msg)
 
         self.max_block_size = 100 * 1024 * 1024
 
@@ -126,11 +130,21 @@ class AzureClient(BaseClient):
                 'of persistent volume directory {}.{}'.format(self.DIRECTORY_PERSISTENT, error))
         return host_number
 
+    def get_instance_location(self, instance_id):
+        try:
+            instance = self.compute_client.virtual_machines.get(
+                self.resource_group, instance_id)
+            return instance.location
+        except Exception as error:
+            self.logger.error(
+                '[Azure] ERROR: Unable to get location for instance_id {}.{}'.format(
+                    instance_id, error))
+            return None
+
     def get_attached_volumes_for_instance(self, instance_id):
         try:
             instance = self.compute_client.virtual_machines.get(
                 self.resource_group, instance_id)
-            self.instance_location = instance.location
             self.availability_zones = instance.zones
             volume_list = []
             for disk in instance.storage_profile.data_disks:
