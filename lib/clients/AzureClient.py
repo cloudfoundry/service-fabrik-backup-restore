@@ -145,7 +145,6 @@ class AzureClient(BaseClient):
         try:
             instance = self.compute_client.virtual_machines.get(
                 self.resource_group, instance_id)
-            self.instance_location = instance.location
             self.availability_zones = instance.zones
             volume_list = []
             for disk in instance.storage_profile.data_disks:
