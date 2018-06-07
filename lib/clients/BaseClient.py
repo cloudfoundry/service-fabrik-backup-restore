@@ -1,3 +1,4 @@
+import requests
 import datetime
 import json
 import signal
@@ -69,6 +70,28 @@ class BaseClient:
         self.__volumes_attached_ids = []
         self.__mounted_devices = []
         self.__devices = {}
+
+    def _get_credentials_from_credhub(self, configuration):
+        access_token = self.__getAccessToken(configuration)
+        params = {'name': configuration['credhub_key']}
+        headers = {'content-type': 'application/json',
+                   'authorization': 'bearer '+ access_token }
+        response = requests.get(url = configuration['credhub_url'], headers=headers, params= params, verify=False)
+        credentials = response.json()
+        return credentials['data'][0]['value']
+
+    def __getAccessToken(self, configuration):
+        payload = {
+            'grant_type' : 'password',
+            'client_id' : configuration['credhub_client_id'],
+            'client_secret': configuration['credhub_client_secret'],
+            'response_type': 'token',
+            'username': configuration['credhub_username'],
+            'password': configuration['credhub_user_password']
+        }
+        response = requests.post(url = configuration['credhub_uaa_url'], data = payload, verify=False)
+        authToken = response.json()
+        return authToken['access_token']
 
     def __schedule_abortion(self, signum, frame):
         if self.__ABORT:
