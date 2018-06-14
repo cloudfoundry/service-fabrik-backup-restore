@@ -76,7 +76,7 @@ class BaseClient:
         params = {'name': configuration['credhub_key']}
         headers = {'content-type': 'application/json',
                    'authorization': 'bearer '+ access_token }
-        response = requests.get(url = configuration['credhub_url'], headers=headers, params= params, verify=False)
+        response = requests.get(url = configuration['credhub_url'].rstrip('/') + '/v1/data', headers=headers, params= params, verify=False)
         credentials = response.json()
         return credentials['data'][0]['value']
 
@@ -89,7 +89,7 @@ class BaseClient:
             'username': configuration['credhub_username'],
             'password': configuration['credhub_user_password']
         }
-        response = requests.post(url = configuration['credhub_uaa_url'], data = payload, verify=False)
+        response = requests.post(url = configuration['credhub_uaa_url']+ '/oauth/token', data = payload, verify=False)
         authToken = response.json()
         return authToken['access_token']
 
