@@ -11,13 +11,15 @@ class AwsClient(BaseClient):
                  poll_maximum_time):
         super(AwsClient, self).__init__(operation_name, configuration, directory_persistent, directory_work_list,
                                         poll_delay_time, poll_maximum_time)
-        if configuration['credhub_url'] is None:
-            self.__setCredentials(configuration['access_key_id'], configuration['secret_access_key'], configuration['region_name'])
+        if not 'credhub_url' in configuration:
+            self.__setCredentials(
+                configuration['access_key_id'], configuration['secret_access_key'], configuration['region_name'])
         else:
             self.logger.info('fetching creds from credhub')
             credentials = self._get_credentials_from_credhub(configuration)
-            self.__setCredentials(credentials['access_key_id'], credentials['secret_access_key'], credentials['region_name'])
-            
+            self.__setCredentials(
+                credentials['access_key_id'], credentials['secret_access_key'], credentials['region_name'])
+
         self.max_retries = (configuration.get('max_retries') if
                             type(configuration.get('max_retries'))
                             == int else 10)
@@ -44,11 +46,11 @@ class AwsClient(BaseClient):
 
     def __setCredentials(self, access_key_id, secret_access_key, region_name):
         self.__awsCredentials = {
-                'access_key_id': access_key_id,
-                'secret_access_key': secret_access_key,
-                'region_name': region_name
-            }
-    
+            'access_key_id': access_key_id,
+            'secret_access_key': secret_access_key,
+            'region_name': region_name
+        }
+
     def format_tags(self):
         return [{'Key': key, 'Value': value} for key, value in self.tags.items()]
 
