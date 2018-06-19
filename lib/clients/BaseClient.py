@@ -32,8 +32,8 @@ class BaseClient:
         self.DISK_PREFIX = 'sf-disk'
         self.tags = {
                 'created_by': 'service-fabrik-backup-restore',
-                'instance_id' :self.INSTANCE_ID ,
-                'job_name' :self.JOB_NAME
+                'instance_id': self.INSTANCE_ID,
+                'job_name': self.JOB_NAME
                 }
         assert len(
             self.OPERATION) > 0, 'No operation name (backup or restore) given.'
@@ -73,10 +73,12 @@ class BaseClient:
 
     def _get_credentials_from_credhub(self, configuration):
         access_token = self.__getAccessToken(configuration)
-        params = {'name': configuration['credhub_key']}
+        params = {'name': configuration['credhub_key'],
+                  'current': 'true'}
         headers = {'content-type': 'application/json',
-                   'authorization': 'bearer '+ access_token }
-        response = requests.get(url = configuration['credhub_url'].rstrip('/') + '/v1/data', headers=headers, params= params, verify=False)
+                   'authorization': 'bearer ' + access_token}
+        response = requests.get(url=configuration['credhub_url'].rstrip(
+            '/') + '/v1/data', headers=headers, params=params, verify=False)
         credentials = response.json()
         return credentials['data'][0]['value']
 
