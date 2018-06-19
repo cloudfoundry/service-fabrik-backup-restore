@@ -243,7 +243,7 @@ class AwsClient(BaseClient):
             kwargs = {
                 'Size': size,
                 'AvailabilityZone': self.availability_zone,
-                'VolumeType': 'standard'
+                'VolumeType': 'gp2'
             }
             if snapshot_id:
                 kwargs['SnapshotId'] = snapshot_id
