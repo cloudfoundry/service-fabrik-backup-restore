@@ -1,5 +1,7 @@
 import os
+import unittest.mock
 import pytest
+import json
 import glob
 from lib.clients.GcpClient import GcpClient
 from lib.clients.BaseClient import BaseClient
@@ -12,6 +14,7 @@ from google.cloud.exceptions import GoogleCloudError
 from google.cloud.storage import Blob
 from lib.models.Snapshot import Snapshot
 from lib.models.Volume import Volume
+from unittest.mock import Mock, patch
 
 operation_name = 'backup'
 project_id = 'gcp-dev'
@@ -747,6 +750,47 @@ class TestGcpClient:
         pytest.raises(
             Exception, self.gcpClient._download_from_blobstore, 'blob', invalid_blob_path)
         self.gcpClient.container = prev_container
+
+    @patch('lib.clients.BaseClient.requests.post')
+    @patch('lib.clients.BaseClient.requests.get')
+    def test_gcp_client_creation(self,  mock_get, mock_post):
+        credhub_config = {
+            'type': 'online',
+            'backup_guid': 'backup-guid',
+            'instance_id': 'vm-id',
+            'secret': 'xyz',
+            'job_name': 'service-job-name',
+            'container': valid_container,
+            'projectId': project_id,
+            'credhub_url': '/credhub',
+            'credhub_uaa_url': '/oauth',
+            'credhub_key': '/test',
+            'credhub_client_id': '1',
+            'credhub_client_secret': 'secret',
+            'credhub_username': 'name',
+            'credhub_user_password': 'pwd'
+        }
+        auth_response = {
+            'access_token': 'auth-token-response'
+        }
+        mock_post.return_value = Mock(ok=True)
+        mock_post.return_value.json.return_value = auth_response
+        mock_get.return_value = Mock(ok=True)
+        mock_get.return_value.json.return_value = {
+            'data': [{
+                'value': {
+                    'type': 'service_account',
+                    'project_id': 'gcp-dev',
+                    'private_key_id': '2222',
+                    'private_key': '-----BEGIN PRIVATE KEY-----\\nMIIEFatI0=\\n-----END PRIVATE KEY-----\\n',
+                    'client_email': 'user@gcp-dev.com',
+                    'client_id': '6666',
+                    'auth_uri': 'auth_uri',
+                    'token_uri': 'token_uri',
+                    'auth_provider_x509_cert_url': 'cert_url',
+                    'client_x509_cert_url': 'cert_url'}}]}
+        GcpClient(operation_name, credhub_config, directory_persistent, directory_work_list,
+                  poll_delay_time, poll_maximum_time)
 
 
 class TestGcpClientExceptions:
