@@ -235,7 +235,7 @@ class AwsClient(BaseClient):
             self.logger.error(message)
             raise Exception(message)
 
-    def _create_volume(self, size, snapshot_id=None):
+    def _create_volume(self, size, snapshot_id=None, volume_type='standard'):
         log_prefix = '[VOLUME] [CREATE]'
         volume = None
 
@@ -243,7 +243,7 @@ class AwsClient(BaseClient):
             kwargs = {
                 'Size': size,
                 'AvailabilityZone': self.availability_zone,
-                'VolumeType': 'standard'
+                'VolumeType': volume_type
             }
             if snapshot_id:
                 kwargs['SnapshotId'] = snapshot_id
@@ -265,8 +265,8 @@ class AwsClient(BaseClient):
                 Tags=self.formatted_tags
             )
 
-            self.logger.info('{} SUCCESS: volume-id={} with tags = {} '.format(
-                log_prefix, volume.id, self.formatted_tags))
+            self.logger.info('{} SUCCESS: volume-id={} volume-type={} with tags = {} '.format(
+                log_prefix, volume.id, volume_type, self.formatted_tags))
         except Exception as error:
             message = '{} ERROR: size={}\n{}'.format(log_prefix, size, error)
             self.logger.error(message)
