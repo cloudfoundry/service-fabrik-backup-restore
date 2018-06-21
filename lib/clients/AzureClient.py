@@ -18,7 +18,7 @@ class AzureClient(BaseClient):
         super(AzureClient, self).__init__(operation_name, configuration, directory_persistent, directory_work_list,
                                           poll_delay_time, poll_maximum_time)
         self.subscription_id = configuration['subscription_id']
-        if not 'credhub_url' in configuration:
+        if configuration['credhub_url'] is None:
             self.__setCredentials(
                 configuration['client_id'], configuration['client_secret'], configuration['tenant_id'])
         else:

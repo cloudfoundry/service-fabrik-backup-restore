@@ -11,7 +11,7 @@ class AwsClient(BaseClient):
                  poll_maximum_time):
         super(AwsClient, self).__init__(operation_name, configuration, directory_persistent, directory_work_list,
                                         poll_delay_time, poll_maximum_time)
-        if not 'credhub_url' in configuration:
+        if configuration['credhub_url'] is None:
             self.__setCredentials(
                 configuration['access_key_id'], configuration['secret_access_key'], configuration['region_name'])
         else:

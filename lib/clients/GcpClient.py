@@ -15,7 +15,7 @@ class GcpClient(BaseClient):
         super(GcpClient, self).__init__(operation_name, configuration, directory_persistent, directory_work_list,
                                         poll_delay_time, poll_maximum_time)
 
-        if not 'credhub_url' in configuration:
+        if configuration['credhub_url'] is None:
             self.__gcpCredentials = json.loads(configuration['credentials'])
         else:
             self.__gcpCredentials = self._get_credentials_from_credhub(

@@ -17,7 +17,7 @@ class OpenstackClient(BaseClient):
                  poll_maximum_time):
         super(OpenstackClient, self).__init__(operation_name, configuration, directory_persistent, directory_work_list,
                                               poll_delay_time, poll_maximum_time)      
-        if not 'credhub_url' in configuration:
+        if configuration['credhub_url'] is None:
             self.__setCredentials(configuration)
         else:
             self.logger.info('fetching creds from credhub')
