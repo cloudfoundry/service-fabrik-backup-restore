@@ -14,7 +14,7 @@ from google.cloud.exceptions import GoogleCloudError
 from google.cloud.storage import Blob
 from lib.models.Snapshot import Snapshot
 from lib.models.Volume import Volume
-from unittest.mock import Mock, patch
+from unittest.mock import Mock
 
 operation_name = 'backup'
 project_id = 'gcp-dev'
@@ -754,7 +754,7 @@ class TestGcpClient:
 
     @patch('lib.clients.BaseClient.requests.post')
     @patch('lib.clients.BaseClient.requests.get')
-    def test_gcp_client_creation(self,  mock_get, mock_post):
+    def test_gcp_client_creation_with_credhub(self,  mock_get, mock_post):
         credhub_config = {
             'type': 'online',
             'backup_guid': 'backup-guid',
@@ -790,8 +790,14 @@ class TestGcpClient:
                     'token_uri': 'token_uri',
                     'auth_provider_x509_cert_url': 'cert_url',
                     'client_x509_cert_url': 'cert_url'}}]}
-        GcpClient(operation_name, credhub_config, directory_persistent, directory_work_list,
+        gcpClient = GcpClient(operation_name, credhub_config, directory_persistent, directory_work_list,
                   poll_delay_time, poll_maximum_time)
+        assert gcpClient.project_id == project_id
+        assert gcpClient.project_id == project_id
+        assert gcpClient.compute_client is not None
+        assert gcpClient.storage_client is not None
+        assert gcpClient.container == bucket
+        assert gcpClient.availability_zone == availability_zone
 
 
 class TestGcpClientExceptions:
