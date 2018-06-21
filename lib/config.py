@@ -112,7 +112,7 @@ def parse_options(type):
     else:
         raise Exception('Use either \'backup\' or \'restore\' as type.')
 
-    for iaas, credentials in _get_parameters_credentials().items():
+    for key, credentials in _get_parameters_credentials().items():
         for name, description in credentials.items():
             parser.add_argument('--{}'.format(name), help=description)
     configuration = vars(parser.parse_args())
