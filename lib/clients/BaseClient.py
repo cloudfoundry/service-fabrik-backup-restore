@@ -71,7 +71,10 @@ class BaseClient:
         self.__mounted_devices = []
         self.__devices = {}
 
-    def _get_credentials_from_credhub(self, configuration):
+    def _get_credentials_from_credhub(self, *args):
+        return self.__retry(self.__get_credentials_from_credhub, args)
+    
+    def __get_credentials_from_credhub(self, configuration):
         access_token = self.__getAccessToken(configuration)
         params = {'name': configuration['credhub_key'],
                   'current': 'true'}
