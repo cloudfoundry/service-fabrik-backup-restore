@@ -36,6 +36,15 @@ parameters_credentials = {
         'username': 'OpenStack user name with Swift privileges',
         'password': 'OpenStack user password'
     },
+    'credhub': {
+        'credhub_url' : 'Credhub endpoint',
+        'credhub_uaa_url': 'Endpoint of UAA for credhub',
+        'credhub_key': 'key to the iaas credentials object in credhub',
+        'credhub_client_id': 'OAUTH client id used in access token generation',
+        'credhub_client_secret': 'OAUTH client secret used in access token generation',
+        'credhub_username': 'OAUTH user id used for authentication',
+        'credhub_user_password': 'OAUTH password used for authentication'
+    },
     'boshlite': {}
 }
 
@@ -103,7 +112,7 @@ def parse_options(type):
     else:
         raise Exception('Use either \'backup\' or \'restore\' as type.')
 
-    for iaas, credentials in _get_parameters_credentials().items():
+    for key, credentials in _get_parameters_credentials().items():
         for name, description in credentials.items():
             parser.add_argument('--{}'.format(name), help=description)
     configuration = vars(parser.parse_args())

@@ -15,7 +15,12 @@ class GcpClient(BaseClient):
         super(GcpClient, self).__init__(operation_name, configuration, directory_persistent, directory_work_list,
                                         poll_delay_time, poll_maximum_time)
 
-        self.__gcpCredentials = json.loads(configuration['credentials'])
+        if configuration['credhub_url'] is None:
+            self.__gcpCredentials = json.loads(configuration['credentials'])
+        else:
+            self.__gcpCredentials = self._get_credentials_from_credhub(
+                configuration)
+
         self.project_id = configuration['projectId']
 
         self.compute_api_name = 'compute'
@@ -91,7 +96,8 @@ class GcpClient(BaseClient):
         try:
             container = self.storage_client.get_bucket(self.CONTAINER)
             # Test if the container is accessible
-            blob_name = '{}/{}'.format(self.GUID, 'AccessTestByServiceFabrikPythonLibrary')
+            blob_name = '{}/{}'.format(self.GUID,
+                                       'AccessTestByServiceFabrikPythonLibrary')
             blob = Blob(blob_name, container)
             blob.upload_from_string(
                 'Sample Message for AccessTestByServiceFabrikPythonLibrary', content_type='text/plain')
@@ -239,7 +245,7 @@ class GcpClient(BaseClient):
             message = '{} ERROR: volume-id={} and tags={}\n{}'.format(
                 log_prefix, volume_id, self.tags, error)
             self.logger.error(message)
-            if snapshot or snapshot_creation_operation: 
+            if snapshot or snapshot_creation_operation:
                 self.delete_snapshot(snapshot_name)
                 snapshot = None
             raise Exception(message)
@@ -317,12 +323,12 @@ class GcpClient(BaseClient):
             else:
                 message = '{} ERROR: volume-id={} status={}'.format(
                     log_prefix, volume.id, volume.status)
-                raise Exception(message)           
+                raise Exception(message)
         except Exception as error:
             message = '{} ERROR: volume-id={}, size={}\n{}'.format(
                 log_prefix, disk_name, size, error)
             self.logger.error(message)
-            if volume or disk_creation_operation: 
+            if volume or disk_creation_operation:
                 self.delete_volume(disk_name)
                 volume = None
             raise Exception(message)
@@ -363,7 +369,7 @@ class GcpClient(BaseClient):
 
     def _create_attachment(self, volume_id, instance_id):
         log_prefix = '[ATTACHMENT] [CREATE]'
-        attachment = None       
+        attachment = None
         try:
             volume = self.compute_client.disks().get(
                 project=self.project_id, zone=self.availability_zone, disk=volume_id).execute()
@@ -568,10 +574,10 @@ class GcpClient(BaseClient):
                     project=self.project_id,
                     operation=operation_id).execute()
         except Exception as error:
-                message = '[Google Cloud Storage] [GET_OPERATION] ERROR: operation id={}\n{}'.format(
-                    operation_id, error)
-                self.logger.error(message)
-                raise Exception(message)
+            message = '[Google Cloud Storage] [GET_OPERATION] ERROR: operation id={}\n{}'.format(
+                operation_id, error)
+            self.logger.error(message)
+            raise Exception(message)
 
         if result['status'] == 'DONE':
             if 'error' in result:
