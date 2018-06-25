@@ -77,7 +77,6 @@ class BaseClient:
         return self.__retry(self.__get_credentials_from_credhub, params)
     
     def __get_credentials_from_credhub(self, configuration, access_token):
-        access_token = self.__getAccessToken(configuration)
         params = {'name': configuration['credhub_key'],
                   'current': 'true'}
         headers = {'content-type': 'application/json',
