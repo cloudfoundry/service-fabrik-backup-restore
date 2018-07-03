@@ -84,7 +84,8 @@ class BaseClient:
         response = requests.get(url=configuration['credhub_url'].rstrip(
             '/') + '/v1/data', headers=headers, params=params, verify=False)
         credentials = response.json()
-        return credentials['data'][0]['value']
+        self.container_credentials = credentials['data'][0]['value']
+        return self.container_credentials
 
     def __getAccessToken(self, configuration):
         payload = {
