@@ -18,11 +18,15 @@ class AzureClient(BaseClient):
         super(AzureClient, self).__init__(operation_name, configuration, directory_persistent, directory_work_list,
                                           poll_delay_time, poll_maximum_time)
         self.subscription_id = configuration['subscription_id']
-        self.__azureCredentials = ServicePrincipalCredentials(
-            client_id=configuration['client_id'],
-            secret=configuration['client_secret'],
-            tenant=configuration['tenant_id']
-        )
+        if configuration['credhub_url'] is None:
+            self.__setCredentials(
+                configuration['client_id'], configuration['client_secret'], configuration['tenant_id'])
+        else:
+            self.logger.info('fetching creds from credhub')
+            credentials = self._get_credentials_from_credhub(configuration)
+            self.__setCredentials(
+                credentials['client_id'], credentials['client_secret'], credentials['tenant_id'])
+
         self.resource_group = configuration['resource_group']
         self.storage_account_name = configuration['storageAccount']
         self.storage_account_key = configuration['storageAccessKey']
@@ -45,7 +49,8 @@ class AzureClient(BaseClient):
             msg = 'Could not determine SCSI host number for data volume'
             self.last_operation(msg, 'failed')
             raise Exception(msg)
-        self.instance_location = self.get_instance_location(configuration['instance_id'])
+        self.instance_location = self.get_instance_location(
+            configuration['instance_id'])
         if not self.instance_location:
             msg = 'Could not retrieve the location of the instance.'
             self.last_operation(msg, 'failed')
@@ -54,6 +59,13 @@ class AzureClient(BaseClient):
         self.max_block_size = 100 * 1024 * 1024
 
         self.availability_zones = self._get_availability_zone_of_server(configuration['instance_id'])
+
+    def __setCredentials(self, client_id, client_secret, tenant_id):
+        self.__azureCredentials = ServicePrincipalCredentials(
+            client_id=client_id,
+            secret=client_secret,
+            tenant=tenant_id
+        )
 
     def get_container(self):
         try:
@@ -69,7 +81,8 @@ class AzureClient(BaseClient):
     def access_container(self):
         # Test if the container is accessible
         try:
-            key = '{}/{}'.format(self.GUID, 'AccessTestByServiceFabrikPythonLibrary')
+            key = '{}/{}'.format(self.GUID,
+                                 'AccessTestByServiceFabrikPythonLibrary')
             self.block_blob_service.create_blob_from_text(
                 self.CONTAINER,
                 key,

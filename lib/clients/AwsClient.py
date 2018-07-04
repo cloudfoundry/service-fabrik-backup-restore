@@ -11,11 +11,15 @@ class AwsClient(BaseClient):
                  poll_maximum_time):
         super(AwsClient, self).__init__(operation_name, configuration, directory_persistent, directory_work_list,
                                         poll_delay_time, poll_maximum_time)
-        self.__awsCredentials = {
-            'access_key_id': configuration['access_key_id'],
-            'secret_access_key': configuration['secret_access_key'],
-            'region_name': configuration['region_name']
-        }
+        if configuration['credhub_url'] is None:
+            self.__setCredentials(
+                configuration['access_key_id'], configuration['secret_access_key'], configuration['region_name'])
+        else:
+            self.logger.info('fetching creds from credhub')
+            credentials = self._get_credentials_from_credhub(configuration)
+            self.__setCredentials(
+                credentials['access_key_id'], credentials['secret_access_key'], credentials['region_name'])
+
         self.max_retries = (configuration.get('max_retries') if
                             type(configuration.get('max_retries'))
                             == int else 10)
@@ -39,6 +43,13 @@ class AwsClient(BaseClient):
             msg = 'Could not retrieve the availability zone of the instance.'
             self.last_operation(msg, 'failed')
             raise Exception(msg)
+
+    def __setCredentials(self, access_key_id, secret_access_key, region_name):
+        self.__awsCredentials = {
+            'access_key_id': access_key_id,
+            'secret_access_key': secret_access_key,
+            'region_name': region_name
+        }
 
     def format_tags(self):
         return [{'Key': key, 'Value': value} for key, value in self.tags.items()]
@@ -235,7 +246,7 @@ class AwsClient(BaseClient):
             self.logger.error(message)
             raise Exception(message)
 
-    def _create_volume(self, size, snapshot_id=None):
+    def _create_volume(self, size, snapshot_id=None, volume_type='standard'):
         log_prefix = '[VOLUME] [CREATE]'
         volume = None
 
@@ -243,7 +254,7 @@ class AwsClient(BaseClient):
             kwargs = {
                 'Size': size,
                 'AvailabilityZone': self.availability_zone,
-                'VolumeType': 'standard'
+                'VolumeType': volume_type
             }
             if snapshot_id:
                 kwargs['SnapshotId'] = snapshot_id
@@ -265,8 +276,8 @@ class AwsClient(BaseClient):
                 Tags=self.formatted_tags
             )
 
-            self.logger.info('{} SUCCESS: volume-id={} with tags = {} '.format(
-                log_prefix, volume.id, self.formatted_tags))
+            self.logger.info('{} SUCCESS: volume-id={} volume-type={} with tags = {} '.format(
+                log_prefix, volume.id, volume_type, self.formatted_tags))
         except Exception as error:
             message = '{} ERROR: size={}\n{}'.format(log_prefix, size, error)
             self.logger.error(message)

@@ -16,15 +16,14 @@ class OpenstackClient(BaseClient):
     def __init__(self, operation_name, configuration, directory_persistent, directory_work_list, poll_delay_time,
                  poll_maximum_time):
         super(OpenstackClient, self).__init__(operation_name, configuration, directory_persistent, directory_work_list,
-                                              poll_delay_time, poll_maximum_time)
-        self.__keystoneCredentials = {
-            'username': configuration['username'],
-            'password': configuration['password'],
-            'auth_url': configuration['auth_url'],
-            'user_domain_name': configuration['user_domain_name'],
-            'project_id': configuration['tenant_id'],
-            'project_name': configuration['tenant_name']
-        }
+                                              poll_delay_time, poll_maximum_time)      
+        if configuration['credhub_url'] is None:
+            self.__setCredentials(configuration)
+        else:
+            self.logger.info('fetching creds from credhub')
+            credentials = self._get_credentials_from_credhub(configuration)
+            self.__setCredentials(credentials)
+
         # The SAP certificiates required to establish a secure connection to
         # OpenStack are already pre-installed on the VMs (/etc/ssl/certs)
         certificates_path = os.getenv('SF_BACKUP_RESTORE_CERTS')
@@ -48,7 +47,16 @@ class OpenstackClient(BaseClient):
             self.last_operation(msg, 'failed')
             raise Exception(msg)
 
-
+    def __setCredentials(self, credentials):
+        self.__keystoneCredentials = {
+            'username': credentials['username'],
+            'password': credentials['password'],
+            'auth_url': credentials['auth_url'],
+            'user_domain_name': credentials['user_domain_name'],
+            'project_id': credentials['tenant_id'],
+            'project_name': credentials['tenant_name']
+        }
+    
     def create_keystone_session(self):
         try:
             auth = KeystonePassword(**self.__keystoneCredentials)

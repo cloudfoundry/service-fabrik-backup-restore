@@ -1,3 +1,4 @@
+import requests
 import datetime
 import json
 import signal
@@ -31,8 +32,8 @@ class BaseClient:
         self.DISK_PREFIX = 'sf-disk'
         self.tags = {
                 'created_by': 'service-fabrik-backup-restore',
-                'instance_id' :self.INSTANCE_ID ,
-                'job_name' :self.JOB_NAME
+                'instance_id': self.INSTANCE_ID,
+                'job_name': self.JOB_NAME
                 }
         assert len(
             self.OPERATION) > 0, 'No operation name (backup or restore) given.'
@@ -69,6 +70,35 @@ class BaseClient:
         self.__volumes_attached_ids = []
         self.__mounted_devices = []
         self.__devices = {}
+
+    def _get_credentials_from_credhub(self, *args):
+        access_token = self.__retry(self.__getAccessToken, args)
+        params = [args[0], access_token]
+        return self.__retry(self.__get_credentials_from_credhub, params)
+    
+    def __get_credentials_from_credhub(self, configuration, access_token):
+        params = {'name': configuration['credhub_key'],
+                  'current': 'true'}
+        headers = {'content-type': 'application/json',
+                   'authorization': 'bearer ' + access_token}
+        response = requests.get(url=configuration['credhub_url'].rstrip(
+            '/') + '/v1/data', headers=headers, params=params, verify=False)
+        credentials = response.json()
+        self.container_credentials = credentials['data'][0]['value']
+        return self.container_credentials
+
+    def __getAccessToken(self, configuration):
+        payload = {
+            'grant_type' : 'password',
+            'client_id' : configuration['credhub_client_id'],
+            'client_secret': configuration['credhub_client_secret'],
+            'response_type': 'token',
+            'username': configuration['credhub_username'],
+            'password': configuration['credhub_user_password']
+        }
+        response = requests.post(url = configuration['credhub_uaa_url']+ '/oauth/token', data = payload, verify=False)
+        authToken = response.json()
+        return authToken['access_token']
 
     def __schedule_abortion(self, signum, frame):
         if self.__ABORT:
