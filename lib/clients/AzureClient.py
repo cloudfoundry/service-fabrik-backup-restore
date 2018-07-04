@@ -54,10 +54,6 @@ class AzureClient(BaseClient):
         self.max_block_size = 100 * 1024 * 1024
 
         self.availability_zones = self._get_availability_zone_of_server(configuration['instance_id'])
-        if not self.availability_zones:
-            msg = 'Could not retrieve the availability zone of the instance.'
-            self.last_operation(msg, 'failed')
-            raise Exception(msg)
 
     def get_container(self):
         try:
