@@ -17,19 +17,22 @@ class AzureClient(BaseClient):
                  poll_maximum_time):
         super(AzureClient, self).__init__(operation_name, configuration, directory_persistent, directory_work_list,
                                           poll_delay_time, poll_maximum_time)
-        self.subscription_id = configuration['subscription_id']
         if configuration['credhub_url'] is None:
             self.__setCredentials(
                 configuration['client_id'], configuration['client_secret'], configuration['tenant_id'])
+            self.resource_group = configuration['resource_group']
+            self.storage_account_name = configuration['storageAccount']
+            self.storage_account_key = configuration['storageAccessKey']
+            self.subscription_id = configuration['subscription_id']
         else:
             self.logger.info('fetching creds from credhub')
-            credentials = self._get_credentials_from_credhub(configuration)
+            azure_config = self._get_credentials_from_credhub(configuration)
             self.__setCredentials(
-                credentials['client_id'], credentials['client_secret'], credentials['tenant_id'])
-
-        self.resource_group = configuration['resource_group']
-        self.storage_account_name = configuration['storageAccount']
-        self.storage_account_key = configuration['storageAccessKey']
+                azure_config['client_id'], azure_config['client_secret'], azure_config['tenant_id'])
+            self.resource_group = azure_config['resource_group']
+            self.storage_account_name = azure_config['storageAccount']
+            self.storage_account_key = azure_config['storageAccessKey']
+            self.subscription_id = azure_config['subscription_id']
 
         self.block_blob_service = BlockBlobService(
             account_name=self.storage_account_name, account_key=self.storage_account_key)
