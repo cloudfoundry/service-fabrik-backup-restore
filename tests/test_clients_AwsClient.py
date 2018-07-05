@@ -10,6 +10,7 @@ from lib.clients.BaseClient import BaseClient
 valid_container = 'backup-container'
 invalid_container = 'invalid-container'
 configuration = {
+    'credhub_url' : None,
     'type' : 'online',
     'backup_guid' : 'backup-guid',
     'instance_id' : 'vm-id',
