@@ -17,9 +17,12 @@ class GcpClient(BaseClient):
 
         if configuration['credhub_url'] is None:
             self.__gcpCredentials = json.loads(configuration['credentials'])
+            self.project_id = configuration['projectId']
         else:
-            self.__gcpCredentials = self._get_credentials_from_credhub(
+            gcp_config = self._get_credentials_from_credhub(
                 configuration)
+            self.__gcpCredentials = gcp_config['credentials']
+            self.project_id = gcp_config['projectId']
 
         self.project_id = configuration['projectId']
 
