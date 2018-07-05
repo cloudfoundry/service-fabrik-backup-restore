@@ -780,16 +780,19 @@ class TestGcpClient:
         mock_get.return_value.json.return_value = {
             'data': [{
                 'value': {
-                    'type': 'service_account',
-                    'project_id': 'gcp-dev',
-                    'private_key_id': '2222',
-                    'private_key': '-----BEGIN PRIVATE KEY-----\\nMIIEFatI0=\\n-----END PRIVATE KEY-----\\n',
-                    'client_email': 'user@gcp-dev.com',
-                    'client_id': '6666',
-                    'auth_uri': 'auth_uri',
-                    'token_uri': 'token_uri',
-                    'auth_provider_x509_cert_url': 'cert_url',
-                    'client_x509_cert_url': 'cert_url'}}]}
+                    'credentials': {
+                        'type': 'service_account',
+                        'project_id': 'gcp-dev',
+                        'private_key_id': '2222',
+                        'private_key': '-----BEGIN PRIVATE KEY-----\\nMIIEFatI0=\\n-----END PRIVATE KEY-----\\n',
+                        'client_email': 'user@gcp-dev.com',
+                        'client_id': '6666',
+                        'auth_uri': 'auth_uri',
+                        'token_uri': 'token_uri',
+                        'auth_provider_x509_cert_url': 'cert_url',
+                        'client_x509_cert_url': 'cert_url'},
+                    'projectId': 'gcp-dev'}
+                    }]}
         gcpClient = GcpClient(operation_name, credhub_config, directory_persistent, directory_work_list,
                   poll_delay_time, poll_maximum_time)
         assert gcpClient.project_id == project_id

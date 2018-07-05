@@ -24,8 +24,6 @@ class GcpClient(BaseClient):
             self.__gcpCredentials = gcp_config['credentials']
             self.project_id = gcp_config['projectId']
 
-        self.project_id = configuration['projectId']
-
         self.compute_api_name = 'compute'
         self.compute_api_version = 'v1'
         self.device_path_template = '/dev/disk/by-id/google-{}'
