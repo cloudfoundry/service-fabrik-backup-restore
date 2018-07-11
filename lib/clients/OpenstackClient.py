@@ -210,10 +210,14 @@ class OpenstackClient(BaseClient):
             self.logger.info('{} SUCCESS: snapshot-id={}'.format(log_prefix, snapshot_id))
             return True
         except Exception as error:
-            message = '{} ERROR: snapshot-id={}\n{}'.format(log_prefix, snapshot_id, error)
-            self.logger.error(message)
-            raise Exception(message)
-
+            if error.code == 404:
+                message = '{} NOT FOUND: snapshot-id={}\n{}\nIgnoring NOT FOUND error, moving to next step...'.format(log_prefix, snapshot_id, error)
+                self.logger.info(message)
+                return True
+            else:
+                message = '{} ERROR: snapshot-id={}\n{}'.format(log_prefix, snapshot_id, error)
+                self.logger.error(message)
+                raise Exception(message)
 
     def _create_volume(self, size, snapshot_id=None):
         log_prefix = '[VOLUME] [CREATE]'
@@ -264,10 +268,14 @@ class OpenstackClient(BaseClient):
             self.logger.info('{} SUCCESS: volume-id={}'.format(log_prefix, volume_id))
             return True
         except Exception as error:
-            message = '{} ERROR: volume-id={}\n{}'.format(log_prefix, volume_id, error)
-            self.logger.error(message)
-            raise Exception(message)
-
+            if error.code == 404:
+                message = '{} NOT FOUND: volume-id={}\n{}\nIgnoring NOT FOUND error, moving to next step...'.format(log_prefix, volume_id, error)
+                self.logger.info(message)
+                return True
+            else:
+                message = '{} ERROR: volume-id={}\n{}'.format(log_prefix, volume_id, error)
+                self.logger.error(message)
+                raise Exception(message)
 
     def _create_attachment(self, volume_id, instance_id):
         log_prefix = '[ATTACHMENT] [CREATE]'
