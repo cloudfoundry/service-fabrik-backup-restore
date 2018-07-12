@@ -320,10 +320,14 @@ class OpenstackClient(BaseClient):
             self.logger.info('{} SUCCESS: volume-id={}, instance-id={}'.format(log_prefix, volume_id, instance_id))
             return True
         except Exception as error:
-            message = '{} ERROR: volume-id={}, instance-id={}\n{}'.format(log_prefix, volume_id, instance_id, error)
-            self.logger.error(message)
-            raise Exception(message)
-
+            if error.code == 404:
+                message = '{} NOT FOUND: volume-id={}, instance-id={}\n{}\nIgnoring NOT FOUND error, moving to next step...'.format(log_prefix, volume_id, instance_id, error)
+                self.logger.info(message)
+                return True
+            else:
+                message = '{} ERROR: volume-id={}, instance-id={}\n{}'.format(log_prefix, volume_id, instance_id, error)
+                self.logger.error(message)
+                raise Exception(message)
 
     def _find_volume_device(self, volume_id):
         self.shell('udevadm trigger', False)
