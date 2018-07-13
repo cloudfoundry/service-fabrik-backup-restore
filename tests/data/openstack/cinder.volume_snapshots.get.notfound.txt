@@ -1,0 +1,6 @@
+{
+    'code': 404,
+    'details': 'n/a',
+    'message': 'Snapshot notfound-snapshot-id could not be found.',
+    'request_id': 'req-id'
+}
