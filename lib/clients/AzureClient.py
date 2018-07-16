@@ -216,6 +216,9 @@ class AzureClient(BaseClient):
                     'creation_data': {
                         'create_option': DiskCreateOption.copy,
                         'source_uri': disk_info.id
+                    },
+                    'sku': {
+                        'name': 'Standard_ZRS'
                     }
                 }
             )
