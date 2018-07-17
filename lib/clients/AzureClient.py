@@ -61,6 +61,8 @@ class AzureClient(BaseClient):
 
         self.max_block_size = 100 * 1024 * 1024
 
+        self.availability_zones = self._get_availability_zone_of_server(configuration['instance_id'])
+
     def __setCredentials(self, client_id, client_secret, tenant_id):
         self.__azureCredentials = ServicePrincipalCredentials(
             client_id=client_id,
@@ -98,6 +100,14 @@ class AzureClient(BaseClient):
             self.logger.error('[Azure] [STORAGE] ERROR: Unable to access container {}.\n{}'.format(
                 self.CONTAINER, error))
             return False
+
+    def _get_availability_zone_of_server(self, instance_id):
+        try:
+            instance = self.compute_client.virtual_machines.get(self.resource_group, instance_id)
+            return instance.zones
+        except Exception as error:
+            self.logger.error('[Azure] ERROR: Unable to find or access attached volume for instance_id {}.{}'.format(instance_id, error))
+            return None
 
     def get_snapshot(self, snapshot_name):
         try:
