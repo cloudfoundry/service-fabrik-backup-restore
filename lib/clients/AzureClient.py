@@ -1,6 +1,7 @@
 from azure.common.credentials import ServicePrincipalCredentials
 from azure.mgmt.compute import ComputeManagementClient
 from azure.mgmt.compute.models import StorageAccountTypes
+from azure.mgmt.compute.models import SnapshotStorageAccountTypes
 from azure.storage.blob import BlockBlobService
 from msrestazure.azure_exceptions import CloudError
 from azure.mgmt.compute.models import DiskCreateOption
