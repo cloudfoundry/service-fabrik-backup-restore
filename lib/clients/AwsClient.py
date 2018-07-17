@@ -23,9 +23,11 @@ class AwsClient(BaseClient):
         self.max_retries = (configuration.get('max_retries') if
                             type(configuration.get('max_retries'))
                             == int else 10)
-        self.ec2_config = Config(retries={'max_attempts': self.max_retries})
-        self.ec2 = self.create_ec2_resource()
-        self.ec2.client = self.create_ec2_client()
+        # skipping some actions for blob operation
+        if operation_name != 'blob_operation':
+            self.ec2_config = Config(retries={'max_attempts': self.max_retries})
+            self.ec2 = self.create_ec2_resource()
+            self.ec2.client = self.create_ec2_client()
         self.s3 = self.create_s3_resource()
         self.s3.client = self.create_s3_client()
         self.formatted_tags = self.format_tags()
