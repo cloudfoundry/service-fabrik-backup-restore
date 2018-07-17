@@ -17,7 +17,10 @@ class BaseClient:
     def __init__(self, operation_name, configuration, directory_persistent, directory_work_list, poll_delay_time,
                  poll_maximum_time):
         self.OPERATION = operation_name
-        self.GUID = configuration['backup_guid']
+        # Skipping some parameters for blob operation.
+        if operation_name != 'blob_operation':
+            self.GUID = configuration['backup_guid']
+        
         self.CONTAINER = configuration['container']
         self.SECRET = configuration['secret']
         self.TYPE = configuration['type']

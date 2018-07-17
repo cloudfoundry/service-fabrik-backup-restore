@@ -66,6 +66,8 @@ parameters_restore = {
     'agent_ip': 'IP of the agent VM'
 }
 
+parameters_blob_operation = {}
+
 parameters_restore_optional = {
     'agent_id': 'the agent id',
     'agent_ip': 'IP of the agent VM'
@@ -85,6 +87,9 @@ def _get_parameters_restore():
 
 def _get_parameters_restore_optional():
     return parameters_restore_optional
+
+def _get_parameters_blob_operation():
+    return parameters_blob_operation
 
 def parse_options(type):
     """Parse the required command line options for the given operation type.
@@ -109,6 +114,10 @@ def parse_options(type):
             	parser.add_argument('--{}'.format(name), help=description, required=False)
             else:
                 parser.add_argument('--{}'.format(name), help=description, required=True)
+    elif type == 'blob_operation':
+        for name, description in _get_parameters_blob_operation().items():
+            parser.add_argument('--{}'.format(name),
+                                help=description, required=True)
     else:
         raise Exception('Use either \'backup\' or \'restore\' as type.')
 
