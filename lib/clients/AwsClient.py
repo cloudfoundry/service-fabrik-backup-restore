@@ -28,23 +28,24 @@ class AwsClient(BaseClient):
             self.ec2_config = Config(retries={'max_attempts': self.max_retries})
             self.ec2 = self.create_ec2_resource()
             self.ec2.client = self.create_ec2_client()
+            self.formatted_tags = self.format_tags()
         self.s3 = self.create_s3_resource()
         self.s3.client = self.create_s3_client()
-        self.formatted_tags = self.format_tags()
         # +-> Check whether the given container exists
-        self.container = self.get_container()
+        self.container = self.get_container(operation_name)
         if not self.container:
             msg = 'Could not find or access the given container.'
             self.last_operation(msg, 'failed')
             raise Exception(msg)
 
         # +-> Get the id of the persistent volume attached to this instance
-        self.availability_zone = self._get_availability_zone_of_server(
-            configuration['instance_id'])
-        if not self.availability_zone:
-            msg = 'Could not retrieve the availability zone of the instance.'
-            self.last_operation(msg, 'failed')
-            raise Exception(msg)
+        if operation_name != 'blob_operation':
+            self.availability_zone = self._get_availability_zone_of_server(
+                configuration['instance_id'])
+            if not self.availability_zone:
+                msg = 'Could not retrieve the availability zone of the instance.'
+                self.last_operation(msg, 'failed')
+                raise Exception(msg)
 
     def __setCredentials(self, access_key_id, secret_access_key, region_name):
         self.__awsCredentials = {
@@ -89,16 +90,16 @@ class AwsClient(BaseClient):
                 '[EC2] ERROR: Unable to determine the availability zone of instance {}.\n{}'.format(instance_id, error))
             return None
 
-    def get_container(self):
+    def get_container(self, operation_name):
         try:
             container = self.s3.Bucket(self.CONTAINER)
             # Test if the container is accessible
             key = '{}/{}'.format(self.GUID, 'AccessTestByServiceFabrikPythonLibrary')
             container.put_object(Key=key)
             container.delete_objects(Delete={
-                'Objects': [{
+               'Objects': [{
                     'Key': key
-                }]
+               }]
             })
             return container
         except Exception as error:
