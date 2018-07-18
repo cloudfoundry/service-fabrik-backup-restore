@@ -20,12 +20,19 @@ class BaseClient:
         # Skipping some parameters for blob operation.
         if operation_name != 'blob_operation':
             self.GUID = configuration['backup_guid']
+            self.INSTANCE_ID = configuration['instance_id']
+            self.tags = {
+                'created_by': 'service-fabrik-backup-restore',
+                'instance_id': self.INSTANCE_ID,
+                'job_name': self.JOB_NAME
+                }
+            self.SECRET = configuration['secret']
+            self.JOB_NAME = configuration['job_name']
+        else:
+            self.GUID = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa'
         
         self.CONTAINER = configuration['container']
-        self.SECRET = configuration['secret']
         self.TYPE = configuration['type']
-        self.JOB_NAME = configuration['job_name']
-        self.INSTANCE_ID = configuration['instance_id']
         self.DIRECTORY_PERSISTENT = directory_persistent
         self.DIRECTORY_WORK_LIST = directory_work_list
         self.DIRECTORY_DATA = '/var/vcap/data'
@@ -33,19 +40,15 @@ class BaseClient:
         self.DEVICE_PATH_TEMPLATE = '/sys/bus/scsi/devices/{}:*:*:{}/block'
         self.SNAPSHOT_PREFIX = 'sf-snapshot'
         self.DISK_PREFIX = 'sf-disk'
-        self.tags = {
-                'created_by': 'service-fabrik-backup-restore',
-                'instance_id': self.INSTANCE_ID,
-                'job_name': self.JOB_NAME
-                }
         assert len(
             self.OPERATION) > 0, 'No operation name (backup or restore) given.'
         assert len(
             self.DIRECTORY_PERSISTENT) > 0, 'Directory of the persistent volume not given.'
         assert len(self.DIRECTORY_WORK_LIST) > 0, 'Directory Worklist not given.'
         assert len(self.CONTAINER) > 0, 'No container given.'
-        assert len(self.SECRET) > 0, 'No encryption secret given.'
-        assert len(self.JOB_NAME) > 0, 'No service job name given.'
+        if operation_name != 'blob_operation':
+            assert len(self.SECRET) > 0, 'No encryption secret given.'
+            assert len(self.JOB_NAME) > 0, 'No service job name given.'
 
         # Handling abort signals
         self.__ABORT = False
@@ -228,10 +231,11 @@ class BaseClient:
                 iaas_client.initialize()
                 iaas_client.initialize('A log messages before the program begins.')
         """
-        self.logger.info('[{}] [START] (backup-type={})] Time: {}'.format(
-            self.OPERATION.upper(), self.TYPE, time.strftime("%Y-%m-%dT%H-%M-%SZ")))
-        self.logger.info('Backup guid: {}, Name of container: {}'.format(
-            self.GUID, self.CONTAINER))
+        if self.OPERATION != 'blob_operation':
+            self.logger.info('[{}] [START] (backup-type={})] Time: {}'.format(
+                self.OPERATION.upper(), self.TYPE, time.strftime("%Y-%m-%dT%H-%M-%SZ")))
+            self.logger.info('Backup guid: {}, Name of container: {}'.format(
+                self.GUID, self.CONTAINER))
         if message:
             self.logger.info(message)
 
