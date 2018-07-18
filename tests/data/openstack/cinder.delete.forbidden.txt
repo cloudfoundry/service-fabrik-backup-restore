@@ -1,0 +1,6 @@
+{
+    'code': 403,
+    'details': 'n/a',
+    'message': 'Forbidden: your credentials do not give you access to this resource.',
+    'request_id': 'req-id'
+}

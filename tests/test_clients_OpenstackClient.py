@@ -10,7 +10,10 @@ from keystoneauth1.session import Session as KeystoneSession
 from novaclient.v2.servers import Server
 from cinderclient.v2.volume_snapshots import Snapshot as CinderSnapshot
 from cinderclient.v2.volumes import Volume as CinderVolume
-from cinderclient.exceptions import NotFound
+from cinderclient.exceptions import NotFound as CinderNotFound
+from cinderclient.exceptions import Forbidden as CinderForbidden
+from novaclient.exceptions import NotFound as NovaNotFound
+from novaclient.exceptions import Forbidden as NovaForbidden
 from swiftclient.exceptions import ClientException
 
 operation_name = 'backup'
@@ -40,9 +43,18 @@ poll_delay_time = 10
 poll_maximum_time = 60
 availability_zone = 'rot_2_1'
 valid_snapshot_name = 'snapshot-id'
+invalid_snapshot_name = 'invalid-snapshot-id'
 not_found_snapshot_name = 'notfound-snapshot-id'
+delete_snapshot_name = 'delete-snapshot-id'
 valid_disk_name = 'disk-id'
+detached_disk_name = 'detached-disk-id'
 not_found_disk_name = 'notfound-disk-id'
+invalid_disk_name = 'invalid-disk-id'
+delete_disk_name = 'delete-disk-id'
+valid_vm_id = 'vm-id'
+delete_response = {
+    'x_openstack_request_ids': ['req-xxx']
+}
 
 
 class CinderClient:
@@ -52,9 +64,23 @@ class CinderClient:
                 info = file_to_dict(
                     'tests/data/openstack/cinder.volumes.get.txt')
                 return CinderVolume(None, info, True, None)
-            elif volume_id == not_found_disk_name:
-                raise NotFound(
+            elif volume_id == detached_disk_name:
+                info = file_to_dict(
+                    'tests/data/openstack/cinder.volumes.get.detached.txt')
+                return CinderVolume(None, info, True, None)
+            elif volume_id == not_found_disk_name or volume_id == delete_disk_name:
+                raise CinderNotFound(
                     **file_to_dict('tests/data/openstack/cinder.volumes.get.notfound.txt'))
+
+        def delete(volume_id):
+            if volume_id == delete_disk_name:
+                return delete_response
+            elif volume_id == not_found_disk_name:
+                raise CinderNotFound(
+                    **file_to_dict('tests/data/openstack/cinder.volumes.get.notfound.txt'))
+            elif volume_id == invalid_disk_name:
+                raise CinderForbidden(
+                    **file_to_dict('tests/data/openstack/cinder.delete.forbidden.txt'))
 
     class volume_snapshots:
         def get(snapshot_id):
@@ -62,9 +88,19 @@ class CinderClient:
                 info = file_to_dict(
                     'tests/data/openstack/cinder.volume_snapshots.get.txt')
                 return CinderSnapshot(None, info, True, None)
-            elif snapshot_id == not_found_snapshot_name:
-                raise NotFound(
+            elif snapshot_id == not_found_snapshot_name or snapshot_id == delete_snapshot_name:
+                raise CinderNotFound(
                     **file_to_dict('tests/data/openstack/cinder.volume_snapshots.get.notfound.txt'))
+
+        def delete(snapshot_id):
+            if snapshot_id == delete_snapshot_name:
+                return delete_response
+            elif snapshot_id == not_found_snapshot_name:
+                raise CinderNotFound(
+                    **file_to_dict('tests/data/openstack/cinder.volume_snapshots.get.notfound.txt'))
+            elif snapshot_id == invalid_snapshot_name:
+                raise CinderForbidden(
+                    **file_to_dict('tests/data/openstack/cinder.delete.forbidden.txt'))
 
 
 class NovaClient:
@@ -73,6 +109,17 @@ class NovaClient:
             info = file_to_dict(
                 'tests/data/openstack/nova.servers.get.instance_id.txt')
             return Server(None, info, True, None)
+
+    class volumes:
+        def delete_server_volume(instance_id, volume_id):
+            if volume_id == detached_disk_name:
+                return delete_response
+            elif volume_id == not_found_disk_name:
+                raise NovaNotFound(
+                    **file_to_dict('tests/data/openstack/cinder.volumes.get.notfound.txt'))
+            elif volume_id == invalid_disk_name:
+                raise NovaForbidden(
+                    **file_to_dict('tests/data/openstack/cinder.delete.forbidden.txt'))
 
 
 class SwiftClient:
@@ -93,7 +140,9 @@ class SwiftService:
 
 
 def file_to_dict(file_path):
-    text = open(file_path, 'r').read().replace('\n', '')
+    f = open(file_path, 'r')
+    text = f.read().replace('\n', '')
+    f.close()
     return ast.literal_eval(text)
 
 
@@ -184,3 +233,35 @@ class TestOpenstackClient:
 
     def test_get_volume_exception(self):
         self.osClient.get_volume(not_found_disk_name) is None
+
+    def test_delete_snapshot(self):
+        assert self.osClient._delete_snapshot(delete_snapshot_name) == True
+
+    def test_delete_snapshot_not_found(self):
+        assert self.osClient._delete_snapshot(not_found_snapshot_name) == True
+
+    def test_delete_snapshot_exception(self):
+        pytest.raises(Exception, self.osClient._delete_snapshot,
+                      invalid_snapshot_name)
+
+    def test_delete_volume(self):
+        assert self.osClient._delete_volume(delete_disk_name) == True
+
+    def test_delete_volume_not_found(self):
+        assert self.osClient._delete_volume(not_found_disk_name) == True
+
+    def test_delete_volume_exception(self):
+        pytest.raises(Exception, self.osClient._delete_volume,
+                      invalid_disk_name)
+
+    def test_delete_attachment(self):
+        assert self.osClient._delete_attachment(
+            detached_disk_name, valid_vm_id) == True
+
+    def test_delete_attachment_not_found(self):
+        assert self.osClient._delete_attachment(
+            not_found_disk_name, valid_vm_id) == True
+
+    def test_delete_attachment_exception(self):
+        pytest.raises(Exception, self.osClient._delete_attachment,
+                      invalid_disk_name, valid_vm_id)
