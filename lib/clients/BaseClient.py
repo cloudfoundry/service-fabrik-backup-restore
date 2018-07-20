@@ -21,13 +21,13 @@ class BaseClient:
         if operation_name != 'blob_operation':
             self.GUID = configuration['backup_guid']
             self.INSTANCE_ID = configuration['instance_id']
+            self.SECRET = configuration['secret']
+            self.JOB_NAME = configuration['job_name']
             self.tags = {
                 'created_by': 'service-fabrik-backup-restore',
                 'instance_id': self.INSTANCE_ID,
                 'job_name': self.JOB_NAME
                 }
-            self.SECRET = configuration['secret']
-            self.JOB_NAME = configuration['job_name']
         else:
             self.GUID = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa'
         
