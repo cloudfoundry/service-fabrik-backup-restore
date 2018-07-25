@@ -39,13 +39,15 @@ class GcpClient(BaseClient):
             self.last_operation(msg, 'failed')
             raise Exception(msg)
 
-        # +-> Get the availability zone of the instance
-        self.availability_zone = self._get_availability_zone_of_server(
-            configuration['instance_id'])
-        if not self.availability_zone:
-            msg = 'Could not retrieve the availability zone of the instance.'
-            self.last_operation(msg, 'failed')
-            raise Exception(msg)
+        # skipping some actions for blob operation
+        if operation_name != 'blob_operation':
+            # +-> Get the availability zone of the instance
+            self.availability_zone = self._get_availability_zone_of_server(
+                configuration['instance_id'])
+            if not self.availability_zone:
+                msg = 'Could not retrieve the availability zone of the instance.'
+                self.last_operation(msg, 'failed')
+                raise Exception(msg)
 
     def create_compute_client(self):
         try:
