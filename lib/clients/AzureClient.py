@@ -37,8 +37,6 @@ class AzureClient(BaseClient):
 
         self.block_blob_service = BlockBlobService(
             account_name=self.storage_account_name, account_key=self.storage_account_key)
-        self.compute_client = ComputeManagementClient(
-            self.__azureCredentials, self.subscription_id)
 
         # +-> Check whether the given container exists and accessible
         if (not self.get_container()) or (not self.access_container()):
@@ -46,19 +44,21 @@ class AzureClient(BaseClient):
             self.last_operation(msg, 'failed')
             raise Exception(msg)
 
-        # scsi_host_number would be used to determine lun to device mapping
-        # scsi_host_number would be same for all data volumes/disks
-        self.scsi_host_number = self.get_host_number_of_data_volumes()
-        if not self.scsi_host_number:
-            msg = 'Could not determine SCSI host number for data volume'
-            self.last_operation(msg, 'failed')
-            raise Exception(msg)
         # skipping some actions for blob operation
         if operation_name != 'blob_operation':
+            self.compute_client = ComputeManagementClient(
+                self.__azureCredentials, self.subscription_id)
             self.instance_location = self.get_instance_location(
                 configuration['instance_id'])
             if not self.instance_location:
                 msg = 'Could not retrieve the location of the instance.'
+                self.last_operation(msg, 'failed')
+                raise Exception(msg)
+            # scsi_host_number would be used to determine lun to device mapping
+            # scsi_host_number would be same for all data volumes/disks
+            self.scsi_host_number = self.get_host_number_of_data_volumes()
+            if not self.scsi_host_number:
+                msg = 'Could not determine SCSI host number for data volume'
                 self.last_operation(msg, 'failed')
                 raise Exception(msg)
 
