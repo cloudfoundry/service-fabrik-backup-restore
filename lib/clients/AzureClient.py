@@ -52,12 +52,14 @@ class AzureClient(BaseClient):
             msg = 'Could not determine SCSI host number for data volume'
             self.last_operation(msg, 'failed')
             raise Exception(msg)
-        self.instance_location = self.get_instance_location(
-            configuration['instance_id'])
-        if not self.instance_location:
-            msg = 'Could not retrieve the location of the instance.'
-            self.last_operation(msg, 'failed')
-            raise Exception(msg)
+        # skipping some actions for blob operation
+        if operation_name != 'blob_operation':
+            self.instance_location = self.get_instance_location(
+                configuration['instance_id'])
+            if not self.instance_location:
+                msg = 'Could not retrieve the location of the instance.'
+                self.last_operation(msg, 'failed')
+                raise Exception(msg)
 
         self.max_block_size = 100 * 1024 * 1024
 
