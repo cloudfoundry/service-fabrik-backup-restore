@@ -62,7 +62,7 @@ class BaseClient:
 
         # Further initializations
         self.configuration = {
-            'poll_delay_time': poll_delay_time if poll_delay_time is not None else 5,
+            'poll_delay_time': poll_delay_time if poll_delay_time is not None else 10,
             'poll_maximum_time': poll_maximum_time if poll_maximum_time is not None else 300
         }
         self.__snapshots_ids = []
