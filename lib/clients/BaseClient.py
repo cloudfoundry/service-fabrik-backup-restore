@@ -149,11 +149,15 @@ class BaseClient:
         else:
             return method
 
-    def __retry(self, function, args):
+    def __retry(self, function, args, throw_exception=None):
         try:
             return self.__retry_rescuer(function, args)
         except Exception as error:
-            return None
+            if throw_exception == True:
+                self.logger.error(error)
+                raise error
+            else:
+                return None
 
     # Retrying configuration parameters currently hard-coded - can be made configurable in future (if needed by anybody)
     @retry(stop_max_attempt_number=5, stop_max_delay=600000, wait_fixed=10000)
@@ -875,31 +879,37 @@ class BaseClient:
         """
         return self.__retry(self._delete_attachment, args)
 
-    def upload_to_blobstore(self, *args):
+    def upload_to_blobstore(self, *args, throw_exception=None):
         """Upload a file to the BLOB storage.
 
         :param blob_to_upload_path: the path of the file to be uploaded
         :param blob_target_name: the name of the uploaded file in the BLOB storage
+        :param throw_exception: flag which determines if the exception should be thrown back to the invoker (default: False)
 
         :Example:
             ::
 
                 iaas_client.upload_to_blobstore('/tmp/backup/files.tar.gz', 'files.tar.gz')
-        """
-        return self.__retry(self._upload_to_blobstore, args)
 
-    def download_from_blobstore(self, *args):
+                iaas_client.upload_to_blobstore('/tmp/backup/files.tar.gz', 'files.tar.gz', True)
+        """
+        return self.__retry(self._upload_to_blobstore, args, throw_exception)
+
+    def download_from_blobstore(self, *args, throw_exception=None):
         """Download a file from the BLOB storage.
 
         :param blob_to_download_name: the name of the file to be downloaded
         :param blob_download_target_path: the path where the file should be downloaded to
+        :param throw_exception: flag which determines if the exception should be thrown back to the invoker (default: False)
 
         :Example:
             ::
 
                 iaas_client.download_from_blobstore('files.tar.gz', '/tmp/restore/files.tar.gz')
+
+                iaas_client.download_from_blobstore('files.tar.gz', '/tmp/restore/files.tar.gz', True)
         """
-        return self.__retry(self._download_from_blobstore, args)
+        return self.__retry(self._download_from_blobstore, args, throw_exception)
 
     def download_from_blobstore_decrypt_extract(self, blob_to_download_name, blob_download_target_path):
         """Download a file from BLOB storage and pipe it to a subprocess for decryption and decompression.
