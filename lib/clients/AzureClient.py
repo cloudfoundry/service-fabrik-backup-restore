@@ -105,7 +105,7 @@ class AzureClient(BaseClient):
         try:
             snapshot = self.compute_client.snapshots.get(
                 self.resource_group, snapshot_name)
-            return Snapshot(snapshot.name, snapshot.disk_size_gb, snapshot.provisioning_state)
+            return Snapshot(snapshot.name, snapshot.disk_size_gb, snapshot.time_created, snapshot.provisioning_state)
         except Exception as error:
             self.logger.error(
                 '[Azure] ERROR: Unable to find or access snapshot {}.\n{}'.format(
@@ -231,7 +231,7 @@ class AzureClient(BaseClient):
             self.logger.info(
                 'Snapshot creation response: {}'.format(snapshot_info))
             snapshot = Snapshot(
-                snapshot_info.name, snapshot_info.disk_size_gb, snapshot_info.provisioning_state)
+                snapshot_info.name, snapshot_info.disk_size_gb, snapshot.time_created, snapshot_info.provisioning_state)
             self._add_snapshot(snapshot.id)
             self.logger.info(
                 '{} SUCCESS: snapshot-id={}, volume-id={} , tags={} '.format(log_prefix, snapshot.id, volume_id, self.tags))

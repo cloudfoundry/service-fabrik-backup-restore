@@ -115,7 +115,7 @@ class GcpClient(BaseClient):
         try:
             snapshot = self.compute_client.snapshots().get(
                 project=self.project_id, snapshot=snapshot_name).execute()
-            return Snapshot(snapshot['name'], snapshot['diskSizeGb'], snapshot['status'])
+            return Snapshot(snapshot['name'], snapshot['diskSizeGb'], snapshot['creationTimestamp'], snapshot['status'])
         except Exception as error:
             message = '[GCP] ERROR: Unable to get snapshot {}.\n{}'.format(
                 snapshot_name, error)

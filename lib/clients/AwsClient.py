@@ -110,7 +110,7 @@ class AwsClient(BaseClient):
     def get_snapshot(self, snapshot_id):
         try:
             snapshot = self.ec2.Snapshot(snapshot_id)
-            return Snapshot(snapshot.id, snapshot.volume_size, snapshot.state)
+            return Snapshot(snapshot.id, snapshot.volume_size, snapshot.start_time, snapshot.state)
         except:
             return None
 
@@ -161,7 +161,7 @@ class AwsClient(BaseClient):
                        snapshot)
 
             snapshot = Snapshot(
-                snapshot.id, snapshot.volume_size, snapshot.state)
+                snapshot.id, snapshot.volume_size, snapshot.start_time, snapshot.state)
             self._add_snapshot(snapshot.id)
 
             self.ec2.create_tags(
@@ -203,7 +203,7 @@ class AwsClient(BaseClient):
                        new_snapshot)
 
             snapshot = Snapshot(
-                new_snapshot.id, new_snapshot.volume_size, new_snapshot.state)
+                new_snapshot.id, new_snapshot.volume_size, new_snapshot.start_time, new_snapshot.state)
             self.logger.info('{} SUCCESS: snapshot-id={}, unencrypted-snapshot_id={}'.format(
                 log_prefix, snapshot.id, snapshot_id))
             self.output_json['snapshotId'] = snapshot.id
