@@ -37,12 +37,22 @@ configuration = {
     'region_name' : 'xyz'
 }
 
+configuration_blob_ops = {
+    'credhub_url' : None,
+    'type' : 'online',
+    'container' : valid_container,
+    'access_key_id' : 'key-id',
+    'secret_access_key' : 'secret-key',
+    'region_name' : 'xyz'
+}
+
 directory_persistent = '/var/vcap/store'
 directory_work_list = '/tmp'
 log_dir = 'tests'
 poll_delay_time = 10
 poll_maximum_time = 60
 operation_name = 'backup'
+operation_name_blob_ops = 'blob_operation'
 availability_zone = 'abc'
 
 #helper functions
@@ -176,6 +186,7 @@ class TestAwsClient:
         os.environ['SF_BACKUP_RESTORE_LAST_OPERATION_DIRECTORY'] = log_dir
 
         self.testAwsClient = AwsClient(operation_name, configuration, directory_persistent, directory_work_list,poll_delay_time, poll_maximum_time)
+        self.testAwsClientBlobOps = AwsClient(operation_name_blob_ops, configuration_blob_ops, directory_persistent, directory_work_list,poll_delay_time, poll_maximum_time)
 
     @classmethod
     def teardown_class(self):
@@ -184,9 +195,17 @@ class TestAwsClient:
     def test_create_aws_client(self):
         assert isinstance(self.testAwsClient.ec2, Ec2Dummy)
         assert isinstance(self.testAwsClient.s3, S3Dummy)
+        assert hasattr(self.testAwsClient, 'ec2')
+        assert hasattr(self.testAwsClient, 'availability_zone')
         assert isinstance(self.testAwsClient.ec2.client, EC2ClientDummy)
         assert isinstance(self.testAwsClient.s3.client, S3ClientDummy)
         assert self.testAwsClient.availability_zone == availability_zone
+
+    def test_create_aws_client_blob_ops(self):
+        assert isinstance(self.testAwsClientBlobOps.s3, S3Dummy)
+        assert isinstance(self.testAwsClientBlobOps.s3.client, S3ClientDummy)
+        assert not hasattr(self.testAwsClientBlobOps, 'ec2')
+        assert not hasattr(self.testAwsClientBlobOps, 'availability_zone')
 
     def test_get_container_exception(self):
         with pytest.raises(Exception):
