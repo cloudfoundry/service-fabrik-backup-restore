@@ -130,7 +130,7 @@ class OpenstackClient(BaseClient):
     def get_snapshot(self, snapshot_id):
         try:
             snapshot = self.cinder.volume_snapshots.get(snapshot_id)
-            return Snapshot(snapshot.id, snapshot.size, snapshot.status)
+            return Snapshot(snapshot.id, snapshot.size, snapshot.created_at, snapshot.status)
         except:
             return None
 
@@ -181,7 +181,7 @@ class OpenstackClient(BaseClient):
                        None,
                        snapshot)
 
-            snapshot = Snapshot(snapshot.id, snapshot.size, snapshot.status)
+            snapshot = Snapshot(snapshot.id, snapshot.size, snapshot.created_at, snapshot.status)
             self._add_snapshot(snapshot.id)
             self.logger.info('{} SUCCESS: snapshot-id={}, volume-id={}'.format(log_prefix, snapshot.id, volume_id))
         except Exception as error:
