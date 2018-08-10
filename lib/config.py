@@ -134,36 +134,34 @@ def parse_options(type):
 
 def initialize(operation_name):
     directory_logfile = os.getenv('SF_BACKUP_RESTORE_LOG_DIRECTORY')
-    if operation_name != 'blob_operation':
-        directory_last_operation = os.getenv(
-            'SF_BACKUP_RESTORE_LAST_OPERATION_DIRECTORY')
-        assert directory_last_operation is not None, 'SF_BACKUP_RESTORE_LAST_OPERATION_DIRECTORY environment variable is ' \
-                                                 'not set.'
+    directory_last_operation = os.getenv(
+        'SF_BACKUP_RESTORE_LAST_OPERATION_DIRECTORY')
+
     # Verify that the required environment variables are provided
     assert directory_logfile is not None, 'SF_BACKUP_RESTORE_LOG_DIRECTORY environment variable is not set.'
-    
+    assert directory_last_operation is not None, 'SF_BACKUP_RESTORE_LAST_OPERATION_DIRECTORY environment variable is ' \
+                                                 'not set.'
 
     for operation in ['backup', 'restore', 'blob_operation']:
         # +-> Define paths for log and last operation file
         path_log = os.path.join(directory_logfile, operation + '.log')
-        if operation != 'blob_operation':
-            path_blue = os.path.join(
-                directory_last_operation, operation + '.lastoperation.blue.json')
-            path_green = os.path.join(
-                directory_last_operation, operation + '.lastoperation.green.json')
-            path_link = os.path.join(
-                directory_last_operation, operation + '.lastoperation.json')
-            # +-> Create .log file if it does not exist
-            if not os.path.exists(path_log):
-                open(path_log, 'w+').close()
-            # +-> Create last operation blue/green files if they do not exist
-            if not os.path.exists(path_blue):
-                open(path_blue, 'w+').close()
-            if not os.path.exists(path_green):
-                open(path_green, 'w+').close()
-            # +-> Create symlink to blue file and clear old log entries
-            if operation == operation_name:
-                os.system('ln -sf {} {}'.format(path_blue, path_link))
-                open(path_log, 'w+').close()
+        path_blue = os.path.join(
+            directory_last_operation, operation + '.lastoperation.blue.json')
+        path_green = os.path.join(
+            directory_last_operation, operation + '.lastoperation.green.json')
+        path_link = os.path.join(
+            directory_last_operation, operation + '.lastoperation.json')
+        # +-> Create .log file if it does not exist
+        if not os.path.exists(path_log):
+            open(path_log, 'w+').close()
+        # +-> Create last operation blue/green files if they do not exist
+        if not os.path.exists(path_blue):
+            open(path_blue, 'w+').close()
+        if not os.path.exists(path_green):
+            open(path_green, 'w+').close()
+        # +-> Create symlink to blue file and clear old log entries
+        if operation == operation_name:
+            os.system('ln -sf {} {}'.format(path_blue, path_link))
+            open(path_log, 'w+').close()
 
     init_logger(os.path.join(directory_logfile, operation_name + '.log'))
