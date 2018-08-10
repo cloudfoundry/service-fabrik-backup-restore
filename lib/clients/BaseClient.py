@@ -29,7 +29,7 @@ class BaseClient:
                 'job_name': self.JOB_NAME
                 }
         else:
-            self.GUID = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa'
+            self.GUID = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa' + str(time.time())
         
         self.CONTAINER = configuration['container']
         self.TYPE = configuration['type']
