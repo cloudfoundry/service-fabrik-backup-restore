@@ -52,6 +52,7 @@ bucket = {
     'etag': 'CAE='
 }
 valid_snapshot_name = 'snapshot-id'
+snapshot_create_time = '2018-04-05T07:21:50.624-07:00'
 not_found_snapshot_name = 'notfound-snapshot-id'
 invalid_snapshot_name = 'invalid-snapshot-id'
 delete_snapshot_name = 'delete-snapshot-id'
@@ -560,10 +561,11 @@ class TestGcpClient:
         self.gcpClient.CONTAINER = valid_container
 
     def test_get_snapshot(self):
-        expected_snapshot = Snapshot(valid_snapshot_name, '40', 'READY')
+        expected_snapshot = Snapshot(valid_snapshot_name, '40', snapshot_create_time, 'READY')
         snapshot = self.gcpClient.get_snapshot(valid_snapshot_name)
         assert expected_snapshot.id == snapshot.id
         assert expected_snapshot.size == snapshot.size
+        assert expected_snapshot.start_time == snapshot.start_time
         assert expected_snapshot.status == snapshot.status
 
     def test_get_snapshot_exception(self):
