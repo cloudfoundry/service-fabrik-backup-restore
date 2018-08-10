@@ -43,6 +43,7 @@ poll_delay_time = 10
 poll_maximum_time = 60
 availability_zone = 'rot_2_1'
 valid_snapshot_name = 'snapshot-id'
+snapshot_create_time = '2018-07-11T11:33:17.000000'
 invalid_snapshot_name = 'invalid-snapshot-id'
 not_found_snapshot_name = 'notfound-snapshot-id'
 delete_snapshot_name = 'delete-snapshot-id'
@@ -215,10 +216,11 @@ class TestOpenstackClient:
         self.osClient.CONTAINER = valid_container
 
     def test_get_snapshot(self):
-        expected_snapshot = Snapshot(valid_snapshot_name, 40, 'available')
+        expected_snapshot = Snapshot(valid_snapshot_name, 40, snapshot_create_time, 'available')
         snapshot = self.osClient.get_snapshot(valid_snapshot_name)
         assert expected_snapshot.id == snapshot.id
         assert expected_snapshot.size == snapshot.size
+        assert expected_snapshot.start_time == snapshot.start_time
         assert expected_snapshot.status == snapshot.status
 
     def test_get_snapshot_exception(self):
