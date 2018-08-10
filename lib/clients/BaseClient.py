@@ -57,12 +57,11 @@ class BaseClient:
 
         # Writing the last operation file
         initialize(operation_name)
-        if operation_name != 'blob_operation':
-            self.LAST_OPERATION_DIRECTORY = os.getenv(
-                'SF_BACKUP_RESTORE_LAST_OPERATION_DIRECTORY')
-            self.last_operation(
-                'Initializing Backup & Restore Library ...', 'processing')
+        self.LAST_OPERATION_DIRECTORY = os.getenv(
+            'SF_BACKUP_RESTORE_LAST_OPERATION_DIRECTORY')
         self.LOG_DIRECTORY = os.getenv('SF_BACKUP_RESTORE_LOG_DIRECTORY')
+        self.last_operation(
+            'Initializing Backup & Restore Library ...', 'processing')
         self.logger = create_logger(self)
         self.output_json = dict()
         self.json_output()
