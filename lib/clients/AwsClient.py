@@ -314,11 +314,17 @@ class AwsClient(BaseClient):
             self.logger.error(message)
             raise Exception(message)
 
+    def _refresh_devices_list(self,instance_id):
+        for volume in self.get_attached_volumes_for_instance(instance_id):
+            device = volume.device.replace('xv', 's')
+            self._add_volume_device(volume.id, device)
+
     def _create_attachment(self, volume_id, instance_id):
         log_prefix = '[ATTACHMENT] [CREATE]'
         attachment = None
 
         try:
+            self._refresh_devices_list(instance_id)
             volume = self.ec2.Volume(volume_id)
             device = self._get_free_device()
             volume.attach_to_instance(

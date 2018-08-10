@@ -1,0 +1,6 @@
+{
+    'code': 404,
+    'details': 'n/a',
+    'message': 'Volume notfound-disk-id could not be found.',
+    'request_id': 'req-id'
+}

@@ -1,6 +1,7 @@
 from azure.common.credentials import ServicePrincipalCredentials
 from azure.mgmt.compute import ComputeManagementClient
 from azure.mgmt.compute.models import StorageAccountTypes
+from azure.mgmt.compute.models import SnapshotStorageAccountTypes
 from azure.storage.blob import BlockBlobService
 from msrestazure.azure_exceptions import CloudError
 from azure.mgmt.compute.models import DiskCreateOption
@@ -62,6 +63,10 @@ class AzureClient(BaseClient):
                 raise Exception(msg)
 
         self.max_block_size = 100 * 1024 * 1024
+        #list of regions where ZRS is supported
+        self.zrs_supported_regions = ['westeurope', 'centralus','southeastasia', 'eastus2', 'northeurope', 'francecentral']
+
+        self.availability_zones = self._get_availability_zone_of_server(configuration['instance_id'])
 
     def __setCredentials(self, client_id, client_secret, tenant_id):
         self.__azureCredentials = ServicePrincipalCredentials(
@@ -100,6 +105,14 @@ class AzureClient(BaseClient):
             self.logger.error('[Azure] [STORAGE] ERROR: Unable to access container {}.\n{}'.format(
                 self.CONTAINER, error))
             return False
+
+    def _get_availability_zone_of_server(self, instance_id):
+        try:
+            instance = self.compute_client.virtual_machines.get(self.resource_group, instance_id)
+            return instance.zones
+        except Exception as error:
+            self.logger.error('[Azure] ERROR: Unable to find or access attached volume for instance_id {}.{}'.format(instance_id, error))
+            return None
 
     def get_snapshot(self, snapshot_name):
         try:
@@ -200,6 +213,9 @@ class AzureClient(BaseClient):
                     instance_id, error))
             return None
 
+    def location_supports_zrs(self, location):
+        return location in self.zrs_supported_regions
+
     def _create_snapshot(self, volume_id):
         log_prefix = '[SNAPSHOT] [CREATE]'
         snapshot = None
@@ -209,18 +225,38 @@ class AzureClient(BaseClient):
             disk_info = self.compute_client.disks.get(
                 self.resource_group, volume_id)
             snapshot_name = self.generate_name_by_prefix(self.SNAPSHOT_PREFIX)
-            snapshot_creation_operation = self.compute_client.snapshots.create_or_update(
-                self.resource_group,
-                snapshot_name,
-                {
-                    'location': disk_info.location,
-                    'tags': self.tags,
-                    'creation_data': {
-                        'create_option': DiskCreateOption.copy,
-                        'source_uri': disk_info.id
+            if self.location_supports_zrs(disk_info.location):
+                snapshot_creation_operation = self.compute_client.snapshots.create_or_update(
+                    self.resource_group,
+                    snapshot_name,
+                    {
+                        'location': disk_info.location,
+                        'tags': self.tags,
+                        'creation_data': {
+                            'create_option': DiskCreateOption.copy,
+                            'source_uri': disk_info.id
+                        },
+                        'sku': {
+                            'name': 'Standard_ZRS'
+                        }
                     }
-                }
-            )
+                )
+            else:
+                snapshot_creation_operation = self.compute_client.snapshots.create_or_update(
+                    self.resource_group,
+                    snapshot_name,
+                    {
+                        'location': disk_info.location,
+                        'tags': self.tags,
+                        'creation_data': {
+                            'create_option': DiskCreateOption.copy,
+                            'source_uri': disk_info.id
+                        },
+                        'sku': {
+                            'name': 'Standard_LRS'
+                        }
+                    }
+                )
 
             self._wait('Waiting for snapshot {} to get ready...'.format(snapshot_name),
                        lambda operation: operation.done() is True,

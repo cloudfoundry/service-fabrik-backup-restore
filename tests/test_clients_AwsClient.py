@@ -187,3 +187,8 @@ class TestAwsClient:
         assert isinstance(self.testAwsClient.ec2.client, EC2ClientDummy)
         assert isinstance(self.testAwsClient.s3.client, S3ClientDummy)
         assert self.testAwsClient.availability_zone == availability_zone
+
+    def test_get_container_exception(self):
+        with pytest.raises(Exception):
+            container = self.testAwsClient.s3.Bucket(invalid_container)
+            assert container is None

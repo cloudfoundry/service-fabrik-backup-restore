@@ -1,0 +1,12 @@
+{
+    'x-timestamp': '11111', 
+    'x-container-object-count': '999', 
+    'x-container-bytes-used': '7777', 
+    'x-container-bytes-used-actual': '888888', 
+    'x-storage-policy': 'default', 
+    'x-trans-id': 'trans-id', 
+    'x-openstack-request-id': 'request-id', 
+    'accept-ranges': 'bytes', 
+    'content-type': 'text/plain; charset=utf-8', 
+    'date': 'Fri, 13 Jul 2018 12:42:12 GMT'
+}
