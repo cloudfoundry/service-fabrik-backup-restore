@@ -99,7 +99,7 @@ class GcpClient(BaseClient):
         try:
             container = self.storage_client.get_bucket(self.CONTAINER)
             # Test if the container is accessible
-            blob_name = '{}/{}'.format(self.GUID,
+            blob_name = '{}/{}'.format(self.BLOB_PREFIX,
                                        'AccessTestByServiceFabrikPythonLibrary')
             blob = Blob(blob_name, container)
             blob.upload_from_string(
