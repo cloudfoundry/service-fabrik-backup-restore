@@ -20,6 +20,7 @@ class BaseClient:
         # Skipping some parameters for blob operation.
         if operation_name != 'blob_operation':
             self.GUID = configuration['backup_guid']
+            self.BLOB_PREFIX = self.GUID
             self.INSTANCE_ID = configuration['instance_id']
             self.SECRET = configuration['secret']
             self.JOB_NAME = configuration['job_name']
@@ -29,7 +30,7 @@ class BaseClient:
                 'job_name': self.JOB_NAME
                 }
         else:
-            self.GUID = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa' + str(time.time())
+            self.BLOB_PREFIX = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa' + str(time.time())
         
         self.CONTAINER = configuration['container']
         self.TYPE = configuration['type']

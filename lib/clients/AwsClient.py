@@ -32,7 +32,7 @@ class AwsClient(BaseClient):
         self.s3 = self.create_s3_resource()
         self.s3.client = self.create_s3_client()
         # +-> Check whether the given container exists
-        self.container = self.get_container(operation_name)
+        self.container = self.get_container()
         if not self.container:
             msg = 'Could not find or access the given container.'
             self.last_operation(msg, 'failed')
@@ -90,11 +90,11 @@ class AwsClient(BaseClient):
                 '[EC2] ERROR: Unable to determine the availability zone of instance {}.\n{}'.format(instance_id, error))
             return None
 
-    def get_container(self, operation_name):
+    def get_container(self):
         try:
             container = self.s3.Bucket(self.CONTAINER)
             # Test if the container is accessible
-            key = '{}/{}'.format(self.GUID, 'AccessTestByServiceFabrikPythonLibrary')
+            key = '{}/{}'.format(self.BLOB_PREFIX, 'AccessTestByServiceFabrikPythonLibrary')
             container.put_object(Key=key)
             container.delete_objects(Delete={
                'Objects': [{
