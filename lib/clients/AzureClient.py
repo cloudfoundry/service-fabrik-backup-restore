@@ -61,12 +61,11 @@ class AzureClient(BaseClient):
                 msg = 'Could not determine SCSI host number for data volume'
                 self.last_operation(msg, 'failed')
                 raise Exception(msg)
+            self.availability_zones = self._get_availability_zone_of_server(configuration['instance_id'])
 
         self.max_block_size = 100 * 1024 * 1024
         #list of regions where ZRS is supported
         self.zrs_supported_regions = ['westeurope', 'centralus','southeastasia', 'eastus2', 'northeurope', 'francecentral']
-
-        self.availability_zones = self._get_availability_zone_of_server(configuration['instance_id'])
 
     def __setCredentials(self, client_id, client_secret, tenant_id):
         self.__azureCredentials = ServicePrincipalCredentials(
