@@ -1,0 +1,11 @@
+{
+    "id": "vm-id",
+    "placement": {
+        "AvailabilityZone": "abc"
+    },
+    "volumes_list":[
+        {
+            "id": "valid-volume-1"
+        }
+    ]
+}

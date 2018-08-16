@@ -1,0 +1,18 @@
+{
+    "valid-volume": {
+        "id": "valid-volume",
+        "size": 40,
+        "state": "READY"
+    },
+    "valid-volume-1": {
+        "id": "valid-volume-1",
+        "size": 60,
+        "state": "READY",
+        "attachments":[
+            {
+                "VolumeId":"valid-volume-1",
+                "Device":"/dev/sda"
+            }
+        ]
+    }
+}

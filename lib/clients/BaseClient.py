@@ -17,12 +17,23 @@ class BaseClient:
     def __init__(self, operation_name, configuration, directory_persistent, directory_work_list, poll_delay_time,
                  poll_maximum_time):
         self.OPERATION = operation_name
-        self.GUID = configuration['backup_guid']
+        # Skipping some parameters for blob operation.
+        if operation_name != 'blob_operation':
+            self.GUID = configuration['backup_guid']
+            self.BLOB_PREFIX = self.GUID
+            self.INSTANCE_ID = configuration['instance_id']
+            self.SECRET = configuration['secret']
+            self.JOB_NAME = configuration['job_name']
+            self.tags = {
+                'created_by': 'service-fabrik-backup-restore',
+                'instance_id': self.INSTANCE_ID,
+                'job_name': self.JOB_NAME
+                }
+        else:
+            self.BLOB_PREFIX = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa' + str(time.time())
+        
         self.CONTAINER = configuration['container']
-        self.SECRET = configuration['secret']
         self.TYPE = configuration['type']
-        self.JOB_NAME = configuration['job_name']
-        self.INSTANCE_ID = configuration['instance_id']
         self.DIRECTORY_PERSISTENT = directory_persistent
         self.DIRECTORY_WORK_LIST = directory_work_list
         self.DIRECTORY_DATA = '/var/vcap/data'
@@ -30,19 +41,15 @@ class BaseClient:
         self.DEVICE_PATH_TEMPLATE = '/sys/bus/scsi/devices/{}:*:*:{}/block'
         self.SNAPSHOT_PREFIX = 'sf-snapshot'
         self.DISK_PREFIX = 'sf-disk'
-        self.tags = {
-                'created_by': 'service-fabrik-backup-restore',
-                'instance_id': self.INSTANCE_ID,
-                'job_name': self.JOB_NAME
-                }
         assert len(
             self.OPERATION) > 0, 'No operation name (backup or restore) given.'
         assert len(
             self.DIRECTORY_PERSISTENT) > 0, 'Directory of the persistent volume not given.'
         assert len(self.DIRECTORY_WORK_LIST) > 0, 'Directory Worklist not given.'
         assert len(self.CONTAINER) > 0, 'No container given.'
-        assert len(self.SECRET) > 0, 'No encryption secret given.'
-        assert len(self.JOB_NAME) > 0, 'No service job name given.'
+        if operation_name != 'blob_operation':
+            assert len(self.SECRET) > 0, 'No encryption secret given.'
+            assert len(self.JOB_NAME) > 0, 'No service job name given.'
 
         # Handling abort signals
         self.__ABORT = False
@@ -143,11 +150,15 @@ class BaseClient:
         else:
             return method
 
-    def __retry(self, function, args):
+    def __retry(self, function, args, throw_exception=None):
         try:
             return self.__retry_rescuer(function, args)
         except Exception as error:
-            return None
+            if throw_exception == True:
+                self.logger.error(error)
+                raise error
+            else:
+                return None
 
     # Retrying configuration parameters currently hard-coded - can be made configurable in future (if needed by anybody)
     @retry(stop_max_attempt_number=5, stop_max_delay=600000, wait_fixed=10000)
@@ -225,10 +236,11 @@ class BaseClient:
                 iaas_client.initialize()
                 iaas_client.initialize('A log messages before the program begins.')
         """
-        self.logger.info('[{}] [START] (backup-type={})] Time: {}'.format(
-            self.OPERATION.upper(), self.TYPE, time.strftime("%Y-%m-%dT%H-%M-%SZ")))
-        self.logger.info('Backup guid: {}, Name of container: {}'.format(
-            self.GUID, self.CONTAINER))
+        if self.OPERATION != 'blob_operation':
+            self.logger.info('[{}] [START] (backup-type={})] Time: {}'.format(
+                self.OPERATION.upper(), self.TYPE, time.strftime("%Y-%m-%dT%H-%M-%SZ")))
+            self.logger.info('Backup guid: {}, Name of container: {}'.format(
+                self.GUID, self.CONTAINER))
         if message:
             self.logger.info(message)
 
@@ -868,31 +880,37 @@ class BaseClient:
         """
         return self.__retry(self._delete_attachment, args)
 
-    def upload_to_blobstore(self, *args):
+    def upload_to_blobstore(self, *args, throw_exception=None):
         """Upload a file to the BLOB storage.
 
         :param blob_to_upload_path: the path of the file to be uploaded
         :param blob_target_name: the name of the uploaded file in the BLOB storage
+        :param throw_exception: flag which determines if the exception should be thrown back to the invoker (default: False)
 
         :Example:
             ::
 
                 iaas_client.upload_to_blobstore('/tmp/backup/files.tar.gz', 'files.tar.gz')
-        """
-        return self.__retry(self._upload_to_blobstore, args)
 
-    def download_from_blobstore(self, *args):
+                iaas_client.upload_to_blobstore('/tmp/backup/files.tar.gz', 'files.tar.gz', True)
+        """
+        return self.__retry(self._upload_to_blobstore, args, throw_exception)
+
+    def download_from_blobstore(self, *args, throw_exception=None):
         """Download a file from the BLOB storage.
 
         :param blob_to_download_name: the name of the file to be downloaded
         :param blob_download_target_path: the path where the file should be downloaded to
+        :param throw_exception: flag which determines if the exception should be thrown back to the invoker (default: False)
 
         :Example:
             ::
 
                 iaas_client.download_from_blobstore('files.tar.gz', '/tmp/restore/files.tar.gz')
+
+                iaas_client.download_from_blobstore('files.tar.gz', '/tmp/restore/files.tar.gz', True)
         """
-        return self.__retry(self._download_from_blobstore, args)
+        return self.__retry(self._download_from_blobstore, args, throw_exception)
 
     def download_from_blobstore_decrypt_extract(self, blob_to_download_name, blob_download_target_path):
         """Download a file from BLOB storage and pipe it to a subprocess for decryption and decompression.

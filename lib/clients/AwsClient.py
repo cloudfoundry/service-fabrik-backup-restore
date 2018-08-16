@@ -23,12 +23,14 @@ class AwsClient(BaseClient):
         self.max_retries = (configuration.get('max_retries') if
                             type(configuration.get('max_retries'))
                             == int else 10)
-        self.ec2_config = Config(retries={'max_attempts': self.max_retries})
-        self.ec2 = self.create_ec2_resource()
-        self.ec2.client = self.create_ec2_client()
+        # skipping some actions for blob operation
+        if operation_name != 'blob_operation':
+            self.ec2_config = Config(retries={'max_attempts': self.max_retries})
+            self.ec2 = self.create_ec2_resource()
+            self.ec2.client = self.create_ec2_client()
+            self.formatted_tags = self.format_tags()
         self.s3 = self.create_s3_resource()
         self.s3.client = self.create_s3_client()
-        self.formatted_tags = self.format_tags()
         # +-> Check whether the given container exists
         self.container = self.get_container()
         if not self.container:
@@ -37,12 +39,13 @@ class AwsClient(BaseClient):
             raise Exception(msg)
 
         # +-> Get the id of the persistent volume attached to this instance
-        self.availability_zone = self._get_availability_zone_of_server(
-            configuration['instance_id'])
-        if not self.availability_zone:
-            msg = 'Could not retrieve the availability zone of the instance.'
-            self.last_operation(msg, 'failed')
-            raise Exception(msg)
+        if operation_name != 'blob_operation':
+            self.availability_zone = self._get_availability_zone_of_server(
+                configuration['instance_id'])
+            if not self.availability_zone:
+                msg = 'Could not retrieve the availability zone of the instance.'
+                self.last_operation(msg, 'failed')
+                raise Exception(msg)
 
     def __setCredentials(self, access_key_id, secret_access_key, region_name):
         self.__awsCredentials = {
@@ -91,12 +94,12 @@ class AwsClient(BaseClient):
         try:
             container = self.s3.Bucket(self.CONTAINER)
             # Test if the container is accessible
-            key = '{}/{}'.format(self.GUID, 'AccessTestByServiceFabrikPythonLibrary')
+            key = '{}/{}'.format(self.BLOB_PREFIX, 'AccessTestByServiceFabrikPythonLibrary')
             container.put_object(Key=key)
             container.delete_objects(Delete={
-                'Objects': [{
+               'Objects': [{
                     'Key': key
-                }]
+               }]
             })
             return container
         except Exception as error:
@@ -107,7 +110,7 @@ class AwsClient(BaseClient):
     def get_snapshot(self, snapshot_id):
         try:
             snapshot = self.ec2.Snapshot(snapshot_id)
-            return Snapshot(snapshot.id, snapshot.volume_size, snapshot.state)
+            return Snapshot(snapshot.id, snapshot.volume_size, snapshot.start_time, snapshot.state)
         except:
             return None
 
@@ -158,7 +161,7 @@ class AwsClient(BaseClient):
                        snapshot)
 
             snapshot = Snapshot(
-                snapshot.id, snapshot.volume_size, snapshot.state)
+                snapshot.id, snapshot.volume_size, snapshot.start_time, snapshot.state)
             self._add_snapshot(snapshot.id)
 
             self.ec2.create_tags(
@@ -200,7 +203,7 @@ class AwsClient(BaseClient):
                        new_snapshot)
 
             snapshot = Snapshot(
-                new_snapshot.id, new_snapshot.volume_size, new_snapshot.state)
+                new_snapshot.id, new_snapshot.volume_size, new_snapshot.start_time, new_snapshot.state)
             self.logger.info('{} SUCCESS: snapshot-id={}, unencrypted-snapshot_id={}'.format(
                 log_prefix, snapshot.id, snapshot_id))
             self.output_json['snapshotId'] = snapshot.id

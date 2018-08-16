@@ -39,13 +39,15 @@ class GcpClient(BaseClient):
             self.last_operation(msg, 'failed')
             raise Exception(msg)
 
-        # +-> Get the availability zone of the instance
-        self.availability_zone = self._get_availability_zone_of_server(
-            configuration['instance_id'])
-        if not self.availability_zone:
-            msg = 'Could not retrieve the availability zone of the instance.'
-            self.last_operation(msg, 'failed')
-            raise Exception(msg)
+        # skipping some actions for blob operation
+        if operation_name != 'blob_operation':
+            # +-> Get the availability zone of the instance
+            self.availability_zone = self._get_availability_zone_of_server(
+                configuration['instance_id'])
+            if not self.availability_zone:
+                msg = 'Could not retrieve the availability zone of the instance.'
+                self.last_operation(msg, 'failed')
+                raise Exception(msg)
 
     def create_compute_client(self):
         try:
@@ -97,7 +99,7 @@ class GcpClient(BaseClient):
         try:
             container = self.storage_client.get_bucket(self.CONTAINER)
             # Test if the container is accessible
-            blob_name = '{}/{}'.format(self.GUID,
+            blob_name = '{}/{}'.format(self.BLOB_PREFIX,
                                        'AccessTestByServiceFabrikPythonLibrary')
             blob = Blob(blob_name, container)
             blob.upload_from_string(
@@ -113,7 +115,7 @@ class GcpClient(BaseClient):
         try:
             snapshot = self.compute_client.snapshots().get(
                 project=self.project_id, snapshot=snapshot_name).execute()
-            return Snapshot(snapshot['name'], snapshot['diskSizeGb'], snapshot['status'])
+            return Snapshot(snapshot['name'], snapshot['diskSizeGb'], snapshot['creationTimestamp'], snapshot['status'])
         except Exception as error:
             message = '[GCP] ERROR: Unable to get snapshot {}.\n{}'.format(
                 snapshot_name, error)

@@ -37,8 +37,6 @@ class AzureClient(BaseClient):
 
         self.block_blob_service = BlockBlobService(
             account_name=self.storage_account_name, account_key=self.storage_account_key)
-        self.compute_client = ComputeManagementClient(
-            self.__azureCredentials, self.subscription_id)
 
         # +-> Check whether the given container exists and accessible
         if (not self.get_container()) or (not self.access_container()):
@@ -46,19 +44,23 @@ class AzureClient(BaseClient):
             self.last_operation(msg, 'failed')
             raise Exception(msg)
 
-        # scsi_host_number would be used to determine lun to device mapping
-        # scsi_host_number would be same for all data volumes/disks
-        self.scsi_host_number = self.get_host_number_of_data_volumes()
-        if not self.scsi_host_number:
-            msg = 'Could not determine SCSI host number for data volume'
-            self.last_operation(msg, 'failed')
-            raise Exception(msg)
-        self.instance_location = self.get_instance_location(
-            configuration['instance_id'])
-        if not self.instance_location:
-            msg = 'Could not retrieve the location of the instance.'
-            self.last_operation(msg, 'failed')
-            raise Exception(msg)
+        # skipping some actions for blob operation
+        if operation_name != 'blob_operation':
+            self.compute_client = ComputeManagementClient(
+                self.__azureCredentials, self.subscription_id)
+            self.instance_location = self.get_instance_location(
+                configuration['instance_id'])
+            if not self.instance_location:
+                msg = 'Could not retrieve the location of the instance.'
+                self.last_operation(msg, 'failed')
+                raise Exception(msg)
+            # scsi_host_number would be used to determine lun to device mapping
+            # scsi_host_number would be same for all data volumes/disks
+            self.scsi_host_number = self.get_host_number_of_data_volumes()
+            if not self.scsi_host_number:
+                msg = 'Could not determine SCSI host number for data volume'
+                self.last_operation(msg, 'failed')
+                raise Exception(msg)
 
         self.max_block_size = 100 * 1024 * 1024
         #list of regions where ZRS is supported
@@ -87,7 +89,7 @@ class AzureClient(BaseClient):
     def access_container(self):
         # Test if the container is accessible
         try:
-            key = '{}/{}'.format(self.GUID,
+            key = '{}/{}'.format(self.BLOB_PREFIX,
                                  'AccessTestByServiceFabrikPythonLibrary')
             self.block_blob_service.create_blob_from_text(
                 self.CONTAINER,
@@ -116,7 +118,7 @@ class AzureClient(BaseClient):
         try:
             snapshot = self.compute_client.snapshots.get(
                 self.resource_group, snapshot_name)
-            return Snapshot(snapshot.name, snapshot.disk_size_gb, snapshot.provisioning_state)
+            return Snapshot(snapshot.name, snapshot.disk_size_gb, snapshot.time_created, snapshot.provisioning_state)
         except Exception as error:
             self.logger.error(
                 '[Azure] ERROR: Unable to find or access snapshot {}.\n{}'.format(
@@ -265,7 +267,7 @@ class AzureClient(BaseClient):
             self.logger.info(
                 'Snapshot creation response: {}'.format(snapshot_info))
             snapshot = Snapshot(
-                snapshot_info.name, snapshot_info.disk_size_gb, snapshot_info.provisioning_state)
+                snapshot_info.name, snapshot_info.disk_size_gb, snapshot.time_created, snapshot_info.provisioning_state)
             self._add_snapshot(snapshot.id)
             self.logger.info(
                 '{} SUCCESS: snapshot-id={}, volume-id={} , tags={} '.format(log_prefix, snapshot.id, volume_id, self.tags))

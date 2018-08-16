@@ -66,6 +66,10 @@ parameters_restore = {
     'agent_ip': 'IP of the agent VM'
 }
 
+parameters_blob_operation = {
+    'container': 'a container in the object storage from which to restore data'
+}
+
 parameters_restore_optional = {
     'agent_id': 'the agent id',
     'agent_ip': 'IP of the agent VM'
@@ -85,6 +89,9 @@ def _get_parameters_restore():
 
 def _get_parameters_restore_optional():
     return parameters_restore_optional
+
+def _get_parameters_blob_operation():
+    return merge_dict(parameters, parameters_blob_operation)
 
 def parse_options(type):
     """Parse the required command line options for the given operation type.
@@ -109,6 +116,10 @@ def parse_options(type):
             	parser.add_argument('--{}'.format(name), help=description, required=False)
             else:
                 parser.add_argument('--{}'.format(name), help=description, required=True)
+    elif type == 'blob_operation':
+        for name, description in _get_parameters_blob_operation().items():
+            parser.add_argument('--{}'.format(name),
+                                help=description, required=True)
     else:
         raise Exception('Use either \'backup\' or \'restore\' as type.')
 
@@ -131,7 +142,7 @@ def initialize(operation_name):
     assert directory_last_operation is not None, 'SF_BACKUP_RESTORE_LAST_OPERATION_DIRECTORY environment variable is ' \
                                                  'not set.'
 
-    for operation in ['backup', 'restore']:
+    for operation in ['backup', 'restore', 'blob_operation']:
         # +-> Define paths for log and last operation file
         path_log = os.path.join(directory_logfile, operation + '.log')
         path_blue = os.path.join(
