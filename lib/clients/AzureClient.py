@@ -267,7 +267,7 @@ class AzureClient(BaseClient):
             self.logger.info(
                 'Snapshot creation response: {}'.format(snapshot_info))
             snapshot = Snapshot(
-                snapshot_info.name, snapshot_info.disk_size_gb, snapshot.time_created, snapshot_info.provisioning_state)
+                snapshot_info.name, snapshot_info.disk_size_gb, snapshot_info.time_created, snapshot_info.provisioning_state)
             self._add_snapshot(snapshot.id)
             self.logger.info(
                 '{} SUCCESS: snapshot-id={}, volume-id={} , tags={} '.format(log_prefix, snapshot.id, volume_id, self.tags))
