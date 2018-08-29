@@ -29,6 +29,9 @@ class AwsClient(BaseClient):
             self.ec2 = self.create_ec2_resource()
             self.ec2.client = self.create_ec2_client()
             self.formatted_tags = self.format_tags()
+
+        # add config for s3
+        self.s3_config = Config(retries={'max_attempts': self.max_retries})
         self.s3 = self.create_s3_resource()
         self.s3.client = self.create_s3_client()
         # +-> Check whether the given container exists
@@ -75,10 +78,10 @@ class AwsClient(BaseClient):
             raise Exception('Connection to AWS EC2 failed: {}'.format(error))
 
     def create_s3_resource(self):
-        return self.create_aws_session().resource('s3')
+        return self.create_aws_session().resource('s3', config=self.s3_config)
 
     def create_s3_client(self):
-        return self.create_aws_session().client('s3')
+        return self.create_aws_session().client('s3', config=self.s3_config)
 
     def _get_availability_zone_of_server(self, instance_id):
         try:
