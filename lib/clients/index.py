@@ -1,5 +1,33 @@
 import sys
+from retrying import retry
 
+# configurable
+iaas_client_max_retries = 8
+
+# between subsequent attempts, waiting_time = (2 ** attempt) * iaas_client_exp_multiplier milliseconds
+iaas_client_exp_multiplier = 1000
+
+# configurable
+iaas_client_max_delay = 600000
+
+# a random jitter would be added as part of exponential backoff to further minimize conflicts
+iaas_client_jitter = 1000
+
+@retry(stop_max_attempt_number=iaas_client_max_retries, wait_exponential_multiplier=iaas_client_exp_multiplier, stop_max_delay=iaas_client_max_delay, wait_jitter_max=iaas_client_jitter)
+def _create_iaas_client(operation_name, configuration, directory_persistent, directory_work_list, poll_delay_time=None,
+                       poll_maximum_time=None):
+    iaas = configuration['iaas'].title() + 'Client'
+    try:
+        return getattr(__import__(iaas, globals(), locals(), [], 1), iaas)\
+            (operation_name, configuration, directory_persistent, directory_work_list, poll_delay_time,
+             poll_maximum_time)
+    except ImportError as error:
+        print('[CONFIG] ERROR: <{}> is not implemented: {}'.format(iaas, error), file=sys.stderr)
+        raise error
+    except Exception as error:
+        print('[CONFIG] ERROR: Could not create {}: {}'.format(iaas, error), file=sys.stderr)
+        raise error
+        
 def create_iaas_client(operation_name, configuration, directory_persistent, directory_work_list, poll_delay_time=None,
                        poll_maximum_time=None):
     """Creates an IaaS client which abstracts provider specifics.
@@ -28,14 +56,10 @@ def create_iaas_client(operation_name, configuration, directory_persistent, dire
            iaas_client = create_iaas_client('backup', configuration, '/var/vcap/store',
                                             ['/tmp/service-fabrik-backup/snapshot', '/tmp/service-fabrik-backup/uploads'])
     """
-    iaas = configuration['iaas'].title() + 'Client'
     try:
-        return getattr(__import__(iaas, globals(), locals(), [], 1), iaas)\
-            (operation_name, configuration, directory_persistent, directory_work_list, poll_delay_time,
-             poll_maximum_time)
+        return _create_iaas_client(operation_name, configuration, directory_persistent, directory_work_list, poll_delay_time,
+                       poll_maximum_time)
     except ImportError as error:
-        print('[CONFIG] ERROR: <{}> is not implemented: {}'.format(iaas, error), file=sys.stderr)
         sys.exit(1)
     except Exception as error:
-        print('[CONFIG] ERROR: Could not create {}: {}'.format(iaas, error), file=sys.stderr)
         sys.exit(1)
