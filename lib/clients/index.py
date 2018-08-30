@@ -13,6 +13,9 @@ iaas_client_max_delay = 600000
 # a random jitter would be added as part of exponential backoff to further minimize conflicts
 iaas_client_jitter = 1000
 
+# total_wait_time = (2 ** attempt) * iaas_client_exp_multiplier + random.random() * iaas_client_jitter milliseconds
+# https://github.com/rholder/retrying/blob/master/retrying.py#L247
+
 @retry(stop_max_attempt_number=iaas_client_max_retries, wait_exponential_multiplier=iaas_client_exp_multiplier, stop_max_delay=iaas_client_max_delay, wait_jitter_max=iaas_client_jitter)
 def _create_iaas_client(operation_name, configuration, directory_persistent, directory_work_list, poll_delay_time=None,
                        poll_maximum_time=None):
