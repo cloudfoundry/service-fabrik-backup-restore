@@ -1,4 +1,5 @@
 import os
+import shutil
 from argparse import ArgumentParser
 from .utils.merge_dict import merge_dict
 from .logger import init_logger
@@ -99,6 +100,24 @@ def _get_parameters_restore_optional():
 def _get_parameters_blob_operation():
     return merge_dict(parameters, parameters_blob_operation)
 
+def remove_all_files(dir_path):
+    if os.path.exists(dir_path):
+        shutil.rmtree(dir_path)
+        os.makedirs(dir_path)
+
+# this function will remove all the files in the directories pointed by SF_BACKUP_RESTORE_LOG_DIRECTORY
+# and SF_BACKUP_RESTORE_LAST_OPERATION_DIRECTORY
+def remove_old_logs_state():
+    directory_logfile = os.getenv('SF_BACKUP_RESTORE_LOG_DIRECTORY')
+    directory_last_operation = os.getenv('SF_BACKUP_RESTORE_LAST_OPERATION_DIRECTORY')
+
+    # Verify that the required environment variables are provided
+    assert directory_logfile is not None, 'SF_BACKUP_RESTORE_LOG_DIRECTORY environment variable is not set.'
+    assert directory_last_operation is not None, 'SF_BACKUP_RESTORE_LAST_OPERATION_DIRECTORY environment variable is not set.'
+
+    remove_all_files(directory_logfile)
+    remove_all_files(directory_last_operation)
+    
 def parse_options(type):
     """Parse the required command line options for the given operation type.
 
@@ -110,6 +129,10 @@ def parse_options(type):
 
             configuration = parse_options('backup')
     """
+
+    # first, remove all the old logs and data
+    remove_old_logs_state()
+
     # TODO: conflict_handler='resolve' is really required ??
     parser = ArgumentParser(conflict_handler='resolve')
     if type == 'backup':
