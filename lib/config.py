@@ -100,11 +100,6 @@ def _get_parameters_restore_optional():
 def _get_parameters_blob_operation():
     return merge_dict(parameters, parameters_blob_operation)
 
-def remove_all_files(dir_path):
-    if os.path.exists(dir_path):
-        shutil.rmtree(dir_path)
-        os.makedirs(dir_path)
-
 # this function will remove all the files in the directories pointed by SF_BACKUP_RESTORE_LOG_DIRECTORY
 # and SF_BACKUP_RESTORE_LAST_OPERATION_DIRECTORY
 def remove_old_logs_state():
@@ -115,9 +110,17 @@ def remove_old_logs_state():
     assert directory_logfile is not None, 'SF_BACKUP_RESTORE_LOG_DIRECTORY environment variable is not set.'
     assert directory_last_operation is not None, 'SF_BACKUP_RESTORE_LAST_OPERATION_DIRECTORY environment variable is not set.'
 
-    remove_all_files(directory_logfile)
-    remove_all_files(directory_last_operation)
-    
+    for operation in ['backup', 'restore', 'blob_operation']:   
+        # +-> Define paths for log and last operation file
+        path_log = os.path.join(directory_logfile, operation + '.log')
+        path_blue = os.path.join(directory_last_operation, operation + '.lastoperation.blue.json')
+        path_green = os.path.join(directory_last_operation, operation + '.lastoperation.green.json')
+        
+        # +-> open a new file if it doesn't exist, and truncate if file exists.
+        open(path_log, 'w+').close()
+        open(path_blue, 'w+').close()
+        open(path_green, 'w+').close()
+
 def parse_options(type):
     """Parse the required command line options for the given operation type.
 
