@@ -1,5 +1,4 @@
 import os
-import shutil
 from argparse import ArgumentParser
 from .utils.merge_dict import merge_dict
 from .logger import init_logger
