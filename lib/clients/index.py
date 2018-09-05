@@ -1,9 +1,9 @@
 import sys
+import os
 from retrying import retry
 
 # configurable
-iaas_client_max_retries = 8
-
+iaas_client_max_retries = int(os.getenv('SF_IAAS_CLIENT_MAX_RETRY')) if os.getenv('SF_IAAS_CLIENT_MAX_RETRY') is not None else 8
 # between subsequent attempts, waiting_time = (2 ** attempt) * iaas_client_exp_multiplier milliseconds
 iaas_client_exp_multiplier = 1000
 
