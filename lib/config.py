@@ -114,27 +114,15 @@ def remove_old_logs_state():
         path_log = os.path.join(directory_logfile, operation + '.log')
         path_blue = os.path.join(directory_last_operation, operation + '.lastoperation.blue.json')
         path_green = os.path.join(directory_last_operation, operation + '.lastoperation.green.json')
+        path_output_json = os.path.join(directory_logfile, operation + '.output.json')
         
         # +-> open a new file if it doesn't exist, and truncate if file exists.
         open(path_log, 'w+').close()
         open(path_blue, 'w+').close()
         open(path_green, 'w+').close()
+        open(path_output_json, 'w+').close()
 
-def parse_options(type):
-    """Parse the required command line options for the given operation type.
-
-    :param type: a string containing either `backup` or `restore`
-    :returns: a dictionary containing the key-value pairs of the provided parameters
-
-    :Example:
-        ::
-
-            configuration = parse_options('backup')
-    """
-
-    # first, remove all the old logs and data
-    remove_old_logs_state()
-
+def build_parser():
     # TODO: conflict_handler='resolve' is really required ??
     parser = ArgumentParser(conflict_handler='resolve')
     if type == 'backup':
@@ -157,6 +145,26 @@ def parse_options(type):
     for key, credentials in _get_parameters_credentials().items():
         for name, description in credentials.items():
             parser.add_argument('--{}'.format(name), help=description)
+
+    return parser
+
+def parse_options(type):
+    """Parse the required command line options for the given operation type.
+
+    :param type: a string containing either `backup` or `restore`
+    :returns: a dictionary containing the key-value pairs of the provided parameters
+
+    :Example:
+        ::
+
+            configuration = parse_options('backup')
+    """
+
+    # first, remove all the old logs and data
+    remove_old_logs_state()
+
+    parser = build_parser()    
+    
     configuration = vars(parser.parse_args())
     assert configuration['type'] == 'online' or configuration['type'] == 'offline', \
         '--type must be \'online\' or \'offline\''
