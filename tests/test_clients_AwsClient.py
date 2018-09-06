@@ -1,3 +1,5 @@
+from tests.utils.utilities import create_start_patcher, stop_all_patchers
+import tests.utils.setup_constants
 import os
 import pytest
 from unittest.mock import patch
@@ -155,33 +157,14 @@ class CollectionsDummy:
     def all(self):
         return self.objects
 
-def create_start_patcher(patch_function, patch_object=None, return_value=None, side_effect=None):
-    if patch_object != None:
-        patcher = patch.object(patch_object, patch_function)
-    else:
-        patcher = patch(patch_function)
-
-    patcher_start = patcher.start()
-    if return_value != None:
-        patcher_start.return_value = return_value
-    
-    if side_effect != None:
-        patcher_start.side_effect = side_effect
-    
-    return patcher
-
-def stop_all_patchers(patchers):
-    for patcher in patchers:
-        patcher.stop()
-
 #Tests
 class TestAwsClient:
     patchers = []
     @classmethod
     def setup_class(self):
-        self.patchers.append(create_start_patcher(patch_function='create_aws_session',patch_object=AwsClient,side_effect=get_dummy_aws_session))
-        self.patchers.append(create_start_patcher(patch_function='last_operation', patch_object=BaseClient))
-        self.patchers.append(create_start_patcher(patch_function='shell', patch_object=BaseClient, side_effect=mock_shell))
+        self.patchers.append(create_start_patcher(patch_function='create_aws_session',patch_object=AwsClient,side_effect=get_dummy_aws_session)['patcher'])
+        self.patchers.append(create_start_patcher(patch_function='last_operation', patch_object=BaseClient)['patcher'])
+        self.patchers.append(create_start_patcher(patch_function='shell', patch_object=BaseClient, side_effect=mock_shell)['patcher'])
         os.environ['SF_BACKUP_RESTORE_LOG_DIRECTORY'] = log_dir
         os.environ['SF_BACKUP_RESTORE_LAST_OPERATION_DIRECTORY'] = log_dir
 
