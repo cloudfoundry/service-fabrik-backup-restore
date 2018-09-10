@@ -81,7 +81,6 @@ parameters_restore_optional = {
     'agent_ip': 'IP of the agent VM'
 }
 
-
 def _get_parameters_credentials():
     return parameters_credentials
 
@@ -122,7 +121,7 @@ def remove_old_logs_state():
         open(path_green, 'w+').close()
         open(path_output_json, 'w+').close()
 
-def build_parser():
+def build_parser(type):
     # TODO: conflict_handler='resolve' is really required ??
     parser = ArgumentParser(conflict_handler='resolve')
     if type == 'backup':
@@ -163,7 +162,7 @@ def parse_options(type):
     # first, remove all the old logs and data
     remove_old_logs_state()
 
-    parser = build_parser()    
+    parser = build_parser(type)    
     
     configuration = vars(parser.parse_args())
     assert configuration['type'] == 'online' or configuration['type'] == 'offline', \
