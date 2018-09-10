@@ -1,6 +1,7 @@
 import os
 import pytest
 import ast
+from tests.utils.utilities import create_start_patcher, stop_all_patchers
 from lib.clients.OpenstackClient import OpenstackClient
 from lib.clients.BaseClient import BaseClient
 from unittest.mock import patch
@@ -146,28 +147,6 @@ def file_to_dict(file_path):
     f.close()
     return ast.literal_eval(text)
 
-
-def create_start_patcher(patch_function, patch_object=None, return_value=None, side_effect=None):
-    if patch_object != None:
-        patcher = patch.object(patch_object, patch_function)
-    else:
-        patcher = patch(patch_function)
-
-    patcher_start = patcher.start()
-    if return_value != None:
-        patcher_start.return_value = return_value
-
-    if side_effect != None:
-        patcher_start.side_effect = side_effect
-
-    return patcher
-
-
-def stop_all_patchers(patchers):
-    for patcher in patchers:
-        patcher.stop()
-
-
 class TestOpenstackClient:
     # Store all patchers
     patchers = []
@@ -175,21 +154,21 @@ class TestOpenstackClient:
     @classmethod
     def setup_class(self):
         self.patchers.append(create_start_patcher(
-            patch_function='last_operation', patch_object=BaseClient))
+            patch_function='last_operation', patch_object=BaseClient)['patcher'])
         self.patchers.append(create_start_patcher(
-            patch_function='keystoneauth1.identity.v3.Password'))
+            patch_function='keystoneauth1.identity.v3.Password')['patcher'])
         self.patchers.append(create_start_patcher(
-            patch_function='keystoneauth1.session.Session'))
+            patch_function='keystoneauth1.session.Session')['patcher'])
         self.patchers.append(create_start_patcher(
-            patch_function='get_project_id', patch_object=KeystoneSession))
+            patch_function='get_project_id', patch_object=KeystoneSession)['patcher'])
         self.patchers.append(create_start_patcher(
-            patch_function='create_cinder_client', patch_object=OpenstackClient, return_value=CinderClient()))
+            patch_function='create_cinder_client', patch_object=OpenstackClient, return_value=CinderClient())['patcher'])
         self.patchers.append(create_start_patcher(
-            patch_function='create_nova_client', patch_object=OpenstackClient, return_value=NovaClient()))
+            patch_function='create_nova_client', patch_object=OpenstackClient, return_value=NovaClient())['patcher'])
         self.patchers.append(create_start_patcher(
-            patch_function='create_swift_client', patch_object=OpenstackClient, return_value=SwiftClient()))
+            patch_function='create_swift_client', patch_object=OpenstackClient, return_value=SwiftClient())['patcher'])
         self.patchers.append(create_start_patcher(
-            patch_function='create_swift_service', patch_object=OpenstackClient, return_value=SwiftService()))
+            patch_function='create_swift_service', patch_object=OpenstackClient, return_value=SwiftService())['patcher'])
 
         os.environ['SF_BACKUP_RESTORE_LOG_DIRECTORY'] = log_dir
         os.environ['SF_BACKUP_RESTORE_LAST_OPERATION_DIRECTORY'] = log_dir
