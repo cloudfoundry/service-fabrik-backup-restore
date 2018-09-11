@@ -52,7 +52,7 @@ bucket = {
     'etag': 'CAE='
 }
 valid_snapshot_name = 'snapshot-id'
-snapshot_create_time = '2018-04-05T07:21:50.624-07:00'
+snapshot_create_time = '2018-04-05T14:21:50Z'
 not_found_snapshot_name = 'notfound-snapshot-id'
 invalid_snapshot_name = 'invalid-snapshot-id'
 delete_snapshot_name = 'delete-snapshot-id'
