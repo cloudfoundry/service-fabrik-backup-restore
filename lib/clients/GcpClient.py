@@ -8,6 +8,8 @@ from ..models.Volume import Volume
 from ..models.Attachment import Attachment
 import json
 import glob
+import iso8601
+import pytz
 
 class GcpClient(BaseClient):
     def __init__(self, operation_name, configuration, directory_persistent, directory_work_list, poll_delay_time,
@@ -115,7 +117,9 @@ class GcpClient(BaseClient):
         try:
             snapshot = self.compute_client.snapshots().get(
                 project=self.project_id, snapshot=snapshot_name).execute()
-            return Snapshot(snapshot['name'], snapshot['diskSizeGb'], snapshot['creationTimestamp'], snapshot['status'])
+            snapshot_creation_time_obj=iso8601.parse_date(snapshot['creationTimestamp'])
+            snapshot_creation_time_utc=snapshot_creation_time_obj.astimezone(pytz.utc).strftime('%Y-%m-%dT%H:%M:%SZ')
+            return Snapshot(snapshot['name'], snapshot['diskSizeGb'], snapshot_creation_time_utc, snapshot['status'])
         except Exception as error:
             message = '[GCP] ERROR: Unable to get snapshot {}.\n{}'.format(
                 snapshot_name, error)
