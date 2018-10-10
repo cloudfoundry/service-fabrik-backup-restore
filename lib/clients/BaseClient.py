@@ -334,6 +334,33 @@ class BaseClient:
             last_operation_file.write(content)
         set_link(filename)
 
+    def poll_last_operation(self, state):
+        SYMLINK = os.path.join(self.LAST_OPERATION_DIRECTORY,
+                               self.OPERATION + '.lastoperation.json')
+        BLUE = os.path.join(self.LAST_OPERATION_DIRECTORY,
+                            self.OPERATION + '.lastoperation.blue.json')
+        GREEN = os.path.join(self.LAST_OPERATION_DIRECTORY,
+                             self.OPERATION + '.lastoperation.green.json')
+
+        def read_link():
+            return os.readlink(SYMLINK)
+
+        def set_link(target):
+            return self.shell('ln -sf {} {}'.format(target, SYMLINK), False)
+
+        if not state:
+            self.logger.error('Cannot poll for Invalid/empty state')
+            return
+        filename = GREEN if read_link() == BLUE else BLUE
+        last_operation_state = 'initial_state'
+
+        while last_operation_state != state:
+            with open(filename, 'w') as last_operation_file:
+                parsed_object = json.load(last_operation_file)
+            last_operation_state = parsed_object['state']
+            time.sleep(60)
+        return
+
     def shell(self, command, log_command=True):
         """Execute a shell command.
 
