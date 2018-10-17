@@ -296,7 +296,7 @@ class BaseClient:
         with open(filepath, 'w') as json_output_file:
             json_output_file.write(json.dumps(self.output_json))
 
-    def last_operation(self, stage, state=None):
+    def last_operation(self, stage, state=None, metadata=None):
         """Write the current state and the current stage to the file storing information about the last operation.
 
         :param stage: a string with an explanation of the last operation
@@ -327,7 +327,8 @@ class BaseClient:
         content = json.dumps({
             'state': self.last_operation_state,
             'stage': stage,
-            'updated_at': datetime.datetime.utcfromtimestamp(time.time()).strftime('%Y-%m-%dT%H:%M:%SZ')
+            'updated_at': datetime.datetime.utcfromtimestamp(time.time()).strftime('%Y-%m-%dT%H:%M:%SZ'),
+            'metadata': metadata
         })
         filename = GREEN if read_link() == BLUE else BLUE
         with open(filename, 'w') as last_operation_file:
