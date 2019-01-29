@@ -132,7 +132,7 @@ class OpenstackClient(BaseClient):
             snapshot = self.cinder.volume_snapshots.get(snapshot_id)
             return Snapshot(snapshot.id, snapshot.size, snapshot.created_at, snapshot.status)
         except Exception as error:
-            self.logger.error('[NOVA] Error while getting snapshot with snapshot id {}.\n{}'.format(snapshot_id, error))
+            self.logger.error('[CINDER] Error while getting snapshot with snapshot id {}.\n{}'.format(snapshot_id, error))
             return None
 
 
@@ -141,7 +141,7 @@ class OpenstackClient(BaseClient):
             volume = self.cinder.volumes.get(volume_id)
             return Volume(volume.id, volume.status, volume.size)
         except Exception as error:
-            self.logger.error('[NOVA] Error while getting volume with id {}.\n{}'.format(volume_id, error))
+            self.logger.error('[CINDER] Error while getting volume with id {}.\n{}'.format(volume_id, error))
             return None
 
 
