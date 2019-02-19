@@ -15,6 +15,11 @@ parameters_credentials = {
         'region_name': 'AWS Region Name',
         'max_retries': 'Max number of retries for SDK AWS client'
     },
+    'ali': {
+        'access_key_id': 'Ali Access Key ID',
+        'secret_access_key': 'Ali Secret Access Key',
+        'region_name': 'Ali Region Name'
+    },
     'azure': {
         'subscription_id': 'Azure subscription id',
         'resource_group': 'Azure resource group name in subscription',
