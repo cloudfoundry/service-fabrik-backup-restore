@@ -13,3 +13,4 @@ google-auth-httplib2==0.0.3
 google-cloud-storage==1.6.0
 iso8601==0.1.12
 pytz==2018.5
+oss2==2.6.1
