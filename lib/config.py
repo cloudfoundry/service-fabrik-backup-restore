@@ -18,7 +18,8 @@ parameters_credentials = {
     'ali': {
         'access_key_id': 'Ali Access Key ID',
         'secret_access_key': 'Ali Secret Access Key',
-        'region_name': 'Ali Region Name'
+        'region_name': 'Ali Region Name',
+        'endpoint': 'Ali Endpoint name'
     },
     'azure': {
         'subscription_id': 'Azure subscription id',
