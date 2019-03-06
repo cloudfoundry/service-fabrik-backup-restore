@@ -1,0 +1,23 @@
+{
+    "Error": 
+    {
+        "BucketName": "invalid-container",
+        "Code": "NoSuchBucket",
+        "Message": "The specified bucket does not exist"
+    },
+    "ResponseMetadata": 
+    {
+        "HTTPHeaders": {
+        "content-type": "application/xml",
+        "date": "dummy",
+        "server": "Aliyun",
+        "transfer-encoding": "chunked",
+        "x-amz-id-2": "dummy",
+        "x-amz-request-id": "dummy"
+        },
+        "HTTPStatusCode": 404,
+        "HostId": "dummy",
+        "RequestId": "dummy",
+        "RetryAttempts": 0
+    }
+}
