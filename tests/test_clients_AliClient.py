@@ -5,7 +5,7 @@ from lib.clients.BaseClient import BaseClient
 
 import oss2
 import os
-
+import pytest
 
 #Test data
 valid_container = 'backup-container'
@@ -47,6 +47,16 @@ class OssDummy:
         def __init__(self, name):
             self.name = name
 
+        def put_object(self,Key):
+            if self.name == valid_container:
+                return
+            else:
+                auth = oss2.Auth(configuration['access_key_id'], configuration['secret_access_key'])
+                client = oss2.Bucket(auth, configuration['endpoint'], self.name)
+                response = json.load(open('tests/data/aws/bucket.put.nosuchbucket.json'))
+                exception = client.exceptions.NoSuchBucket(error_response=response,operation_name='PutObject')
+                raise exception
+
 class AliSessionDummy:
     def __init__(self):
         pass
@@ -84,3 +94,8 @@ class TestAwsClient:
 
     def test_create_aws_client(self):
        assert isinstance(self.testAliClient.container, OssDummy.Bucket)
+
+    def test_get_container_exception(self):
+       with pytest.raises(Exception):
+            container = self.testAliClient.OssDummy.Bucket(invalid_container)
+            assert container is None
