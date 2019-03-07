@@ -10,7 +10,7 @@ class AliClient(BaseClient):
         if configuration['credhub_url'] is None:
             auth = oss2.Auth(configuration['access_key_id'], configuration['secret_access_key'])
             endpoint = configuration['endpoint']
-        else
+        else:
             credentials = self._get_credentials_from_credhub(configuration)
             auth = oss2.Auth(credentials['access_key_id'], credentials['secret_access_key'])
             endpoint = credentials['endpoint']
