@@ -4,7 +4,7 @@ from .utils.merge_dict import merge_dict
 from .logger import init_logger
 
 parameters = {
-    'iaas': 'the underlying IaaS provider [possible values: aws/azure/gcp/openstack/boshlite]',
+    'iaas': 'the underlying IaaS provider [possible values: aws/azure/gcp/ali/openstack/boshlite]',
     'type': 'online or offline backup [possible values: online/offline]'
 }
 
@@ -14,6 +14,12 @@ parameters_credentials = {
         'secret_access_key': 'AWS Secret Access Key',
         'region_name': 'AWS Region Name',
         'max_retries': 'Max number of retries for SDK AWS client'
+    },
+    'ali': {
+        'access_key_id': 'Ali Access Key ID',
+        'secret_access_key': 'Ali Secret Access Key',
+        'region_name': 'Ali Region Name',
+        'endpoint': 'Ali Endpoint name'
     },
     'azure': {
         'subscription_id': 'Azure subscription id',
