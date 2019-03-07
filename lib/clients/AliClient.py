@@ -7,17 +7,23 @@ class AliClient(BaseClient):
                  poll_maximum_time):
         super(AliClient, self).__init__(operation_name, configuration, directory_persistent, directory_work_list,
                                         poll_delay_time, poll_maximum_time)
-        auth = oss2.Auth(configuration['access_key_id'], configuration['secret_access_key'])
+        if configuration['credhub_url'] is None:
+            auth = oss2.Auth(configuration['access_key_id'], configuration['secret_access_key'])
+            endpoint = configuration['endpoint']
+        else
+            credentials = self._get_credentials_from_credhub(configuration)
+            auth = oss2.Auth(credentials['access_key_id'], credentials['secret_access_key'])
+            endpoint = credentials['endpoint']
         # +-> Check whether the given container exists
-        self.container = self.get_container(auth, configuration)
+        self.container = self.get_container(auth, endpoint)
         if not self.container:
             msg = 'Could not find or access the given container.'
             self.last_operation(msg, 'failed')
             raise Exception(msg)
 
-    def get_container(self, auth, configuration):
+    def get_container(self, auth, endpoint):
         try:
-            container = oss2.Bucket(auth, configuration['endpoint'], self.CONTAINER)
+            container = oss2.Bucket(auth, endpoint, self.CONTAINER)
             # Test if the container is accessible
             key = '{}/{}'.format(self.BLOB_PREFIX, 'AccessTestByServiceFabrikPythonLibrary')
             container.put_object(key, 'This is a sample text')
