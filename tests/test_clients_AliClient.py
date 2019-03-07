@@ -72,7 +72,7 @@ class AliSessionDummy:
 def get_dummy_ali_session():
     return AliSessionDummy()
 
-def get_dummy_container(auth, configuration):
+def get_dummy_container(auth, endpoint):
     return OssDummy.Bucket(configuration['container'])
 
 class TestAwsClient:
