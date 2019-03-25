@@ -60,10 +60,10 @@ class AliClient(BaseClient):
             self.logger.info('{} Started to download the tarball to target{}.'
                              .format(log_prefix, blob_download_target_path))
             try:
-                self.container.get_object(
-                    blob_to_download_name, blob_download_target_path).read()
+                self.container.get_object_to_file(
+                    blob_to_download_name, blob_download_target_path)
                 self.logger.info('{} SUCCESS: blob_to_download={}, blob_target_name={}, container={}'.format(
-                    log_prefix, blob_to_download_name, self.CONTAINER, blob_download_target_path))
+                    log_prefix, blob_to_download_name, blob_download_target_path, self.CONTAINER))
                 return True
             except Exception as error:
                 message = '{} ERROR: blob_to_download={}, blob_target_name={}, container={}\n{}'.format(
