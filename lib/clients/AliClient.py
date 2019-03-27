@@ -11,13 +11,15 @@ class AliClient(BaseClient):
         super(AliClient, self).__init__(operation_name, configuration, directory_persistent, directory_work_list,
                                         poll_delay_time, poll_maximum_time)
         if configuration['credhub_url'] is None:
-            self.__aliCredentials = [configuration['access_key_id'], configuration['secret_access_key']]
+            self.__setCredentials(
+                configuration['access_key_id'], configuration['secret_access_key'], configuration['region_name'])
             auth = oss2.Auth(
                 configuration['access_key_id'], configuration['secret_access_key'])
             endpoint = configuration['endpoint']
         else:
             credentials = self._get_credentials_from_credhub(configuration)
-            self.__aliCredentials = credentials
+            self.__setCredentials(
+                credentials['access_key_id'], credentials['secret_access_key'], credentials['region_name'])
             auth = oss2.Auth(
                 credentials['access_key_id'], credentials['secret_access_key'])
             endpoint = credentials['endpoint']
@@ -31,10 +33,17 @@ class AliClient(BaseClient):
             self.last_operation(msg, 'failed')
             raise Exception(msg)
 
+    def __setCredentials(self, access_key_id, secret_access_key, region_name):
+        self.__aliCredentials = {
+            'access_key_id': access_key_id,
+            'secret_access_key': secret_access_key,
+            'region_name': region_name
+        }
+
     def create_compute_client(self):
         try:
             credentials = self.__aliCredentials
-            compute_client = AcsClient(credentials["access_key_id"], credentials["secret_access_key"], credentials["region_name"], auto_retry=True,
+            compute_client = AcsClient(credentials['access_key_id'], credentials['secret_access_key'], credentials['region_name'], auto_retry=True,
             max_retry_time=10, timeout=30)
             return compute_client
         except Exception as error:
@@ -113,8 +122,52 @@ class AliClient(BaseClient):
                 self.logger.error(message)
                 raise Exception(message)
 
+    def _create_snapshot(self, volume_id, description='Service-Fabrik: Automated backup'):
+        log_prefix = '[SNAPSHOT] [CREATE]'
+        snapshot = None
+        snapshot_creation_operation = None
+        region_id = self.__aliCredentials['region_name']
+        snapshot_name = self.generate_name_by_prefix(self.SNAPSHOT_PREFIX)
+        try:
+            snapshot_req_params = {
+                'DiskId': volume_id,
+                'SnapshotName': snapshot_name,
+                'Description': description
+            }
+            self.logger.info('{} START for volume id {} with tags {} and snapshot name {}'.format(
+                log_prefix, volume_id, self.tags, snapshot_name))
+            snpshot_creation_request = get_common_request('CreateSnapshot', snapshot_req_params, self.tags)
+            snapshot_creation_operation = self.compute_client.do_action_with_exception(snpshot_creation_request)
+            snapshot_details_json = json.loads(snapshot_creation_operation.decode('utf-8'))
+            snapshot_id = snapshot_details_json['SnapshotId']
+            self._wait('Waiting for snapshot {} to get ready...'.format(snapshot_name),
+                       (lambda snapshot_id, region_id: self._is_snapshot_ready(snapshot_id, region_id)),
+                       None,
+                       snapshot_id, region_id)
+
+            snapshot = self.get_snapshot(snapshot_name)
+            if snapshot and snapshot.status == 'accomplished':
+                self._add_snapshot(snapshot.id)
+                self.output_json['snapshotId'] = snapshot.id
+                self.logger.info('{} SUCCESS: snapshot-id={}, volume-id={}, status={} with tags {}'.format(
+                    log_prefix, snapshot.id, volume_id, snapshot.status, self.tags))
+            else:
+                message = '{} ERROR: snapshot-id={} status={}'.format(
+                    log_prefix, snapshot_name, snapshot.status if snapshot else None)
+                raise Exception(message)
+        except Exception as error:
+            message = '{} ERROR: volume-id={} and tags={}\n{}'.format(
+                log_prefix, volume_id, self.tags, error)
+            self.logger.error(message)
+            if snapshot or snapshot_creation_operation:
+                self.delete_snapshot(snapshot_id)
+                snapshot = None
+            raise Exception(message)
+
+        return snapshot
+
     
-    def _get_snapshot_state(snapshot_id, region_id){
+    def _is_snapshot_ready(snapshot_id, region_id):
         """Gets the snapshot state.
         https://www.alibabacloud.com/help/doc-detail/25641.htm?spm=a2c63.p38356.a3.5.c880458dkimfOs#SnapshotType
         Status can be "progressing" "accomplished" or "failed"
@@ -129,10 +182,10 @@ class AliClient(BaseClient):
             }
             get_snapshot_request = get_common_request('DescribeSnapshots', get_snapshot_req_params)
             snapshot_details = self.compute_client.do_action_with_exception(get_snapshot_request)
-            snapshot_details_json = json.loads(snapshot_details.decode("utf-8"))
+            snapshot_details_json = json.loads(snapshot_details.decode('utf-8'))
             if len(snapshot_details_json['Snapshots']['Snapshot']) > 1:
-                self.logger.info('[ALI] ERROR: More than 1 snapshot found for with name {}'.format(
-                snapshot_name))
+                self.logger.info('[ALI] ERROR: More than 1 snapshot found for with snapshot id {}'.format(
+                snapshot_id))
                 return True
             snapshot_state = snapshot_details_json['Snapshots']['Snapshot'][0]['Status']
             if snapshot_state == 'accomplished' || snapshot_state == 'failed':
@@ -140,52 +193,8 @@ class AliClient(BaseClient):
             return False
         except Exception as error:
             self.logger.error(
-                '[ALI] ERROR: Unable to get snapshot details for {}.\n{}'.format(snapshot_id, error))
+                '[ALI] ERROR: Unable to get snapshot details for snapshot id {}.\n{}'.format(snapshot_id, error))
             return False
-    }
-
-    def _create_snapshot(self, volume_id, description='Service-Fabrik: Automated backup'):
-        log_prefix = '[SNAPSHOT] [CREATE]'
-        snapshot = None
-        snapshot_creation_operation = None
-        region_id = self.__aliCredentials["region_name"]
-        snapshot_name = self.generate_name_by_prefix(self.SNAPSHOT_PREFIX)
-        try:
-            snapshot_req_params = {
-                'DiskId': volume_id,
-                'SnapshotName': snapshot_name,
-                'Description': description
-            }
-            self.logger.info('{} START for volume id {} with tags {} and snapshot name {}'.format(
-                log_prefix, volume_id, self.tags, snapshot_name))
-            snpshot_creation_request = get_common_request('CreateSnapshot', snapshot_req_params, self.tags)
-            snapshot_creation_operation = self.compute_client.do_action_with_exception(snpshot_creation_request)
-
-            self._wait('Waiting for snapshot {} to get ready...'.format(snapshot_name),
-                       (lambda snapshot_id, region_id: self._get_snapshot_state(snapshot_id, region_id)),
-                       None,
-                       snapshot_name, region_id)
-
-            snapshot = self.get_snapshot(snapshot_name)
-            if snapshot.status == 'accomplished':
-                self._add_snapshot(snapshot.id)
-                self.output_json['snapshotId'] = snapshot.id
-                self.logger.info('{} SUCCESS: snapshot-id={}, volume-id={}, status={} with tags {}'.format(
-                    log_prefix, snapshot.id, volume_id, snapshot.status, self.tags))
-            else:
-                message = '{} ERROR: snapshot-id={} status={}'.format(
-                    log_prefix, snapshot_name, snapshot.status)
-                raise Exception(message)
-        except Exception as error:
-            message = '{} ERROR: volume-id={} and tags={}\n{}'.format(
-                log_prefix, volume_id, self.tags, error)
-            self.logger.error(message)
-            if snapshot or snapshot_creation_operation:
-                self.delete_snapshot(snapshot_name)
-                snapshot = None
-            raise Exception(message)
-
-        return snapshot
 
     def _copy_snapshot(self, snapshot_id):
         return self.get_snapshot(snapshot_id)
@@ -194,7 +203,7 @@ class AliClient(BaseClient):
         log_prefix = '[SNAPSHOT] [DELETE]'
         try:
             snapshot_deletion_req_params = {
-                'SnapshotName': snapshot_id
+                'SnapshotId': snapshot_id
             }
             snpshot_deletion_request = get_common_request('DeleteSnapshot', snapshot_deletion_req_params)
             snapshot_deletion_operation = self.compute_client.do_action_with_exception(snpshot_deletion_request)
@@ -214,9 +223,9 @@ class AliClient(BaseClient):
             self.logger.error(message)
             raise Exception(message)
     
-    def get_snapshot(self, snapshot_name):
+    def get_snapshot(self, snapshot_id):
         try:
-            region_id = self.__aliCredentials["region_name"]
+            region_id = self.__aliCredentials['region_name']
             get_snapshot_req_params = {
                 'PageSize' : 10,
                 'RegionId' : region_id,
@@ -224,21 +233,16 @@ class AliClient(BaseClient):
             }
             get_snapshot_request = get_common_request('DescribeSnapshots', get_snapshot_req_params)
             snapshot_details = self.compute_client.do_action_with_exception(get_snapshot_request)
-            snapshot_details_json = json.loads(snapshot_details.decode("utf-8"))
+            snapshot_details_json = json.loads(snapshot_details.decode('utf-8'))
             if len(snapshot_details_json['Snapshots']['Snapshot']) > 1:
-                message = 'More than 1 snapshot found for with name {}'.format(
-                snapshot_name)
+                message = 'More than 1 snapshot found for with id {}'.format(
+                snapshot_id)
                 raise Exception(message)
             if len(snapshot_details_json['Snapshots']['Snapshot']) == 0:
                 return None
             snapshot = snapshot_details_json['Snapshots']['Snapshot'][0]
             return Snapshot(snapshot['SnapshotId'], snapshot['SourceDiskSize'], snapshot['CreationTime'], snapshot['Status'])
         except Exception as error:
-            message = '[ALI] ERROR: Error in getting snapshot {}.\n{}'.format(
-                snapshot_name, error)
-            raise Exception(message)
-
-    def generate_name_by_prefix(self, prefix):
-        return '{}-{}-{}'.format(prefix,
-                                 random.randrange(10000, 99999),
-                                 time.strftime("%Y%m%d%H%M%S"))
+            self.logger.error('[ALI] ERROR: Error in getting snapshot {}.\n{}'.format(
+                snapshot_name, error))
+            return None
