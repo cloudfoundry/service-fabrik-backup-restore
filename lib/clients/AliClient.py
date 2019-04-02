@@ -5,6 +5,7 @@ from aliyunsdkcore.request import CommonRequest
 from aliyunsdkcore.client import AcsClient
 from ..models.Snapshot import Snapshot
 from ..models.Volume import Volume
+from ..models.Attachment import Attachment
 import json
 
 class AliClient(BaseClient):
@@ -357,7 +358,7 @@ class AliClient(BaseClient):
                 return volume
         return None
 
-    def _is_volume_ready(self, disk_id, region_id):
+    def _is_volume_ready(self, disk_id, region_id, attached_vol=False):
         """Gets the disk state.
         https://www.alibabacloud.com/help/doc-detail/25626.htm?spm=a2c63.p38356.879954.9.67f065dd0XjNkR#DiskItemType
         Status can be "In_use" or "Available" or "Attaching" or "Detaching" or "Creating" or "ReIniting"
@@ -379,6 +380,9 @@ class AliClient(BaseClient):
                 return False
             disk_state = disk_details_json['Disks']['Disk'][0]['Status']
             if disk_state in ('Available', 'In_use'):
+                # State has to be In_use once attached
+                if attached_vol and disk_state == 'Available'
+                    return False
                 return True
             return False
         except Exception as error:
@@ -411,18 +415,18 @@ class AliClient(BaseClient):
                     volume_id, error))
             return None
 
-    def _create_volume(self, size, snapshot_id=None):
+    def _create_volume(self, size, snapshot_id=None, volume_type = 'cloud_ssd'):
         log_prefix = '[VOLUME] [CREATE]'
         volume = None
         disk_creation_operation = None
         disk_name = self.generate_name_by_prefix(self.DISK_PREFIX)
         region_id = self.__aliCredentials['region_name']
-        disk_category = 'cloud_ssd'
         disk_creation_req_params = {
             'RegionId' : region_id,
             'ZoneId' : self.availability_zone,
             'DiskName' : disk_name,
-            'DiskCategory' : disk_category,
+            'DiskCategory' : volume_type,
+            'Encrypted': True
             'Size' : size
         }
         try:
@@ -491,16 +495,6 @@ class AliClient(BaseClient):
                        None,
                        volume_id)
             
-            self._remove_snapshot(snapshot_id)
-            disk_deletion_operation = self.compute_client.disks().delete(
-                project=self.project_id, zone=self.availability_zone, disk=volume_id).execute()
-
-            self._wait('Waiting for disk {} to be deleted...'.format(volume_id),
-                       (lambda operation_id, zonal_operation: self.get_operation_status(
-                           operation_id, zonal_operation) == 'DONE'),
-                       None,
-                       disk_deletion_operation['name'], True)
-
             volume_exists = self.volume_exists(volume_id)
 
             # Check if volume exists, if not then it is successfully deleted, else raise exception
@@ -521,3 +515,115 @@ class AliClient(BaseClient):
             self.logger.error(message)
             raise Exception(message)
 
+    def _find_volume_device(self, volume_id):
+        try:
+            device = None
+            region_id = self.__aliCredentials['region_name']
+            get_volume_req_params = {
+                'PageSize' : 10,
+                'RegionId' : region_id,
+                'DiskIds' : [volume_id]
+            }
+            get_volume_request = self._get_common_request('DescribeDisks', get_volume_req_params)
+            volume_details = self.compute_client.do_action_with_exception(get_volume_request)
+            volume_details_json = json.loads(volume_details.decode('utf-8'))
+            return volume_details_json['Disks']['Disk'][0]['Device']
+        except Exception as error:
+            self.logger.error(
+                '[ALI] ERROR: Unable to find device for attached volume {}.{}'.format(
+                    volume_id, error))
+            return None
+
+    def _create_attachment(self, volume_id, instance_id):
+        log_prefix = '[ATTACHMENT] [CREATE]'
+        attachment = None
+        device = None
+        attachment_creation_operation = None
+        try:
+            region_id = self.__aliCredentials['region_name']
+            attachment_req_params = {
+                'InstanceId' : instance_id,
+                'DiskId' : volume_id
+            }
+            attachment_request = self._get_common_request('AttachDisk', attachment_req_params)
+            attachment_creation_operation = self.compute_client.do_action_with_exception(attachment_request)
+            attachment_details_json = json.loads(attachment_creation_operation.decode('utf-8'))
+            
+            self._wait('Waiting for volume {} to get ready...'.format(volume_id),
+                       (lambda disk_id, region_id: self._is_volume_ready(volume_id, region_id, True)),
+                       None,
+                       volume_id, region_id)
+            
+            # Raise exception if device returned in None,
+            # as it might mean that disk was not attached properly
+            device = self._find_volume_device(volume_id)
+            if device is not None:
+                self.logger.info(
+                    'Attached volume-id={}, device={}'.format(volume_id, device))
+                self._add_volume_device(volume_id, device)
+            else:
+                message = '{} ERROR: Device returned for volume-id={} is None'.format(
+                    log_prefix, volume_id)
+                raise Exception(message)
+
+            attachment = Attachment(0, volume_id, instance_id)
+            self._add_attachment(volume_id, instance_id)
+            self.logger.info(
+                '{} SUCCESS: volume-id={}, instance-id={}'.format(
+                    log_prefix, volume_id, instance_id))
+        except Exception as error:
+            message = '{} ERROR: volume-id={}, instance-id={}\n{}'.format(
+                log_prefix, volume_id, instance_id, error)
+            self.logger.error(message)
+
+            # The following lines are a workaround in case of inconsistency:
+            # The attachment process may end with throwing an Exception,
+            # but the attachment has been successful. Therefore, we must
+            # check whether the volume is attached and if yes, trigger the detachment
+            if attachment_creation_operation:
+                if device:
+                    self.logger.warning('[VOLUME] [DELETE] Volume is attached although the attaching process failed, '
+                                    'triggering detachment')
+                    attachment = True
+                if attachment:
+                    self.delete_attachment(volume_id, instance_id)
+                    attachment = None
+            raise Exception(message)
+
+    def _delete_attachment(self, volume_id, instance_id):
+        log_prefix = '[ATTACHMENT] [DELETE]'
+        try:
+            region_id = self.__aliCredentials['region_name']
+            delete_attachment_req_params = {
+                'InstanceId' : instance_id,
+                'DiskId' : volume_id
+            }
+            delete_attachment_request = self._get_common_request('DetachDisk', delete_attachment_req_params)
+            attachment_deletion_operation = self.compute_client.do_action_with_exception(delete_attachment_request)
+            
+            self._wait('Waiting for attachment of volume {} to be deleted...'.format(volume_id),
+                       (lambda disk_id, region_id: self._is_volume_ready(volume_id, region_id)),
+                       None,
+                       volume_id, region_id)
+            
+            self._remove_volume_device(volume_id)
+            self._remove_attachment(volume_id, instance_id)
+            self.logger.info(
+                '{} SUCCESS: volume-id={}, instance-id={}'.format(log_prefix, volume_id, instance_id))
+            return True
+        except Exception as error:
+            message = '{} ERROR: volume-id={}, instance-id={}\n{}'.format(
+                log_prefix, volume_id, instance_id, error)
+            self.logger.error(message)
+            raise Exception(message)
+
+    def get_mountpoint(self, volume_id, partition=None):
+        device = self._get_device_of_volume(volume_id)
+        if not device:
+            return None
+        # --> /dev/vdb on machine will be /dev/xvdb on AliCloud for "I/O Optimized" instances
+        # --> https://www.alibabacloud.com/help/doc-detail/25426.htm
+        device = device.replace('/xv', '/v')
+        if partition:
+            device += partition
+        return device
