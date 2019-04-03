@@ -16,21 +16,17 @@ class AliClient(BaseClient):
         if configuration['credhub_url'] is None:
             self.__setCredentials(
                 configuration['access_key_id'], configuration['secret_access_key'], configuration['region_name'])
-            auth = oss2.Auth(
-                configuration['access_key_id'], configuration['secret_access_key'])
-            endpoint = configuration['endpoint']
         else:
             credentials = self._get_credentials_from_credhub(configuration)
             self.__setCredentials(
                 credentials['access_key_id'], credentials['secret_access_key'], credentials['region_name'])
-            auth = oss2.Auth(
-                credentials['access_key_id'], credentials['secret_access_key'])
-            endpoint = credentials['endpoint']
+        self.endpoint = configuration['endpoint']
         # +-> Create compute and storage clients
         self.compute_client = self.create_compute_client()
+        self.storage_client = self.create_storage_client()
 
         # +-> Check whether the given container exists
-        self.container = self.get_container(auth, endpoint)
+        self.container = self.get_container()
         if not self.container:
             msg = 'Could not find or access the given container.'
             self.last_operation(msg, 'failed')
@@ -63,12 +59,21 @@ class AliClient(BaseClient):
             raise Exception(
                 'Creation of compute client failed: {}'.format(error))
 
-    def _get_common_request(action_name, params, tags=None):
+    def create_storage_client(self):
+        try:
+            credentials = self.__aliCredentials
+            storage_client = oss2.Auth(
+                credentials['access_key_id'], credentials['secret_access_key'])
+            return storage_client
+        except Exception as error:
+            raise Exception(
+                'Creation of storage client failed: {}'.format(error))
+
+    def _get_common_request(self, action_name, params, tags=None):
         request = CommonRequest()
         request.set_domain('ecs.aliyuncs.com')
         request.set_version('2014-05-26')
         request.set_action_name(action_name)
-
         i = 1
         if tags != None:
             for key in tags:
@@ -77,10 +82,8 @@ class AliClient(BaseClient):
                 paramVal = 'Tag.' + str(i) + '.Value'
                 request.add_query_param(paramVal, tags[key])
                 i += 1
-
         for key in params:
             request.add_query_param(key, params[key])
-
         return request
 
     def _get_availability_zone_of_server(self, instance_id):
@@ -95,17 +98,15 @@ class AliClient(BaseClient):
                 message = 'More than 1 instance found for with id {}'.format(
                 instance_id)
                 raise Exception(message)
-            self.logger.error(
-                '[ALI] ERROR: Unable to determine the availability zone of instance{}.\n'.format(instance_id))
-            return None
+            return instance_details_json['Instances']['Instance']['ZoneId']
         except Exception as error:
             self.logger.error(
                 '[ALI] ERROR: Unable to determine the availability zone of instance {}.\n{}'.format(instance_id, error))
             return None
 
-    def get_container(self, auth, endpoint):
+    def get_container(self):
         try:
-            container = oss2.Bucket(auth, endpoint, self.CONTAINER)
+            container = oss2.Bucket(self.storage_client, self.endpoint, self.CONTAINER)
             # Test if the container is accessible
             key = '{}/{}'.format(self.BLOB_PREFIX,
                                  'AccessTestByServiceFabrikPythonLibrary')
@@ -381,7 +382,7 @@ class AliClient(BaseClient):
             disk_state = disk_details_json['Disks']['Disk'][0]['Status']
             if disk_state in ('Available', 'In_use'):
                 # State has to be In_use once attached
-                if attached_vol and disk_state == 'Available'
+                if attached_vol and disk_state == 'Available':
                     return False
                 return True
             return False
@@ -426,7 +427,7 @@ class AliClient(BaseClient):
             'ZoneId' : self.availability_zone,
             'DiskName' : disk_name,
             'DiskCategory' : volume_type,
-            'Encrypted': True
+            'Encrypted': True,
             'Size' : size
         }
         try:
