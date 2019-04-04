@@ -98,7 +98,7 @@ class AliClient(BaseClient):
                 message = 'More than 1 instance found for with id {}'.format(
                 instance_id)
                 raise Exception(message)
-            return instance_details_json['Instances']['Instance']['ZoneId']
+            return instance_details_json['Instances']['Instance'][0]['ZoneId']
         except Exception as error:
             self.logger.error(
                 '[ALI] ERROR: Unable to determine the availability zone of instance {}.\n{}'.format(instance_id, error))
@@ -160,7 +160,6 @@ class AliClient(BaseClient):
         log_prefix = '[SNAPSHOT] [CREATE]'
         snapshot = None
         snapshot_creation_operation = None
-        region_id = self.__aliCredentials['region_name']
         snapshot_name = self.generate_name_by_prefix(self.SNAPSHOT_PREFIX)
         try:
             snapshot_req_params = {
@@ -175,11 +174,11 @@ class AliClient(BaseClient):
             snapshot_details_json = json.loads(snapshot_creation_operation.decode('utf-8'))
             snapshot_id = snapshot_details_json['SnapshotId']
             self._wait('Waiting for snapshot {} to get ready...'.format(snapshot_name),
-                       (lambda snapshot_id, region_id: self._is_snapshot_ready(snapshot_id, region_id)),
+                       (lambda snapshot_id: self._is_snapshot_ready(snapshot_id)),
                        None,
-                       snapshot_id, region_id)
+                       snapshot_id)
 
-            snapshot = self.get_snapshot(snapshot_name)
+            snapshot = self.get_snapshot(snapshot_id)
             if snapshot and snapshot.status == 'accomplished':
                 self._add_snapshot(snapshot.id)
                 self.output_json['snapshotId'] = snapshot.id
@@ -201,7 +200,7 @@ class AliClient(BaseClient):
         return snapshot
 
     
-    def _is_snapshot_ready(self, snapshot_id, region_id):
+    def _is_snapshot_ready(self, snapshot_id):
         """Gets the snapshot state.
         https://www.alibabacloud.com/help/doc-detail/25641.htm?spm=a2c63.p38356.a3.5.c880458dkimfOs#SnapshotType
         Status can be "progressing" "accomplished" or "failed"
@@ -209,20 +208,8 @@ class AliClient(BaseClient):
         # Try until snapshot state is either "accomplished" or "failed"
         # Retries for failures also
         try:
-            get_snapshot_req_params = {
-                'PageSize' : 10,
-                'RegionId' : region_id,
-                'SnapshotIds' : [snapshot_id]
-            }
-            get_snapshot_request = self._get_common_request('DescribeSnapshots', get_snapshot_req_params)
-            snapshot_details = self.compute_client.do_action_with_exception(get_snapshot_request)
-            snapshot_details_json = json.loads(snapshot_details.decode('utf-8'))
-            if len(snapshot_details_json['Snapshots']['Snapshot']) > 1:
-                self.logger.error('[ALI] ERROR: More than 1 snapshot found for with snapshot id {}'.format(
-                snapshot_id))
-                return False
-            snapshot_state = snapshot_details_json['Snapshots']['Snapshot'][0]['Status']
-            if snapshot_state in ('accomplished','failed'):
+            snapshot_list = self._get_snapshot_list(snapshot_id)
+            if len(snapshot_list) == 1 and snapshot_list[0]['Status'] in ('accomplished','failed'):
                 return True
             return False
         except Exception as error:
@@ -232,35 +219,6 @@ class AliClient(BaseClient):
 
     def _copy_snapshot(self, snapshot_id):
         return self.get_snapshot(snapshot_id)
-
-    def snapshot_exists(self, snapshot_id):
-        try:
-            region_id = self.__aliCredentials['region_name']
-            get_snapshot_req_params = {
-                'PageSize' : 10,
-                'RegionId' : region_id,
-                'SnapshotIds' : [snapshot_id]
-            }
-            get_snapshot_request = self._get_common_request('DescribeSnapshots', get_snapshot_req_params)
-            snapshot_details = self.compute_client.do_action_with_exception(get_snapshot_request)
-            snapshot_details_json = json.loads(snapshot_details.decode('utf-8'))
-            if len(snapshot_details_json['Snapshots']['Snapshot']) != 0:
-                return False
-            return True
-        except Exception as error:
-            self.logger.error('[ALI] ERROR: Error in getting snapshot {}.\n{}'.format(
-                snapshot_id, error))
-            return None
-
-
-            if len(volume_details_json['Disks']['Disk']) != 0:
-                return False
-            return True
-        except Exception as error:
-            message = '[ALI] ERROR: Unable to get snapshot {}.\n{}'.format(
-                snapshot_id, error)
-            self.logger.error(message)
-            raise Exception(message)
 
     def _delete_snapshot(self, snapshot_id):
         log_prefix = '[SNAPSHOT] [DELETE]'
@@ -272,13 +230,13 @@ class AliClient(BaseClient):
             snapshot_deletion_operation = self.compute_client.do_action_with_exception(snpshot_deletion_request)
 
             self._wait('Waiting for snapshot {} to be deleted...'.format(snapshot_id),
-                       lambda id: not self.get_snapshot(id),
+                       lambda snapshot_id: len(self._get_snapshot_list(snapshot_id)) == 0,
                        None,
                        snapshot_id)
-            snapshot_exists = self.snapshot_exists(snapshot_id)
+            snapshot_list = self._get_snapshot_list(snapshot_id)
 
             # Check if snapshot exists, if not then it is successfully deleted, else raise exception
-            if not snapshot_exists:
+            if len(snapshot_list) == 0:
                 self._remove_snapshot(snapshot_id)
                 self.logger.info(
                     '{} SUCCESS: snapshot-id={}'.format(
@@ -295,24 +253,30 @@ class AliClient(BaseClient):
             self.logger.error(message)
             raise Exception(message)
 
+    def _get_snapshot_list(self, snapshot_id):
+        region_id = self.__aliCredentials['region_name']
+        get_snapshot_req_params = {
+            'PageSize' : 10,
+            'RegionId' : region_id,
+            'SnapshotIds' : [snapshot_id]
+        }
+        get_snapshot_request = self._get_common_request('DescribeSnapshots', get_snapshot_req_params)
+        snapshot_details = self.compute_client.do_action_with_exception(get_snapshot_request)
+        snapshot_details_json = json.loads(snapshot_details.decode('utf-8'))
+        return snapshot_details_json['Snapshots']['Snapshot']
+
     def get_snapshot(self, snapshot_id):
         try:
-            region_id = self.__aliCredentials['region_name']
-            get_snapshot_req_params = {
-                'PageSize' : 10,
-                'RegionId' : region_id,
-                'SnapshotIds' : [snapshot_id]
-            }
-            get_snapshot_request = self._get_common_request('DescribeSnapshots', get_snapshot_req_params)
-            snapshot_details = self.compute_client.do_action_with_exception(get_snapshot_request)
-            snapshot_details_json = json.loads(snapshot_details.decode('utf-8'))
-            if len(snapshot_details_json['Snapshots']['Snapshot']) > 1:
-                message = 'More than 1 snapshot found for with id {}'.format(
+            snapshot_list = self._get_snapshot_list(snapshot_id)
+            if len(snapshot_list) > 1:
+                message = 'More than 1 snapshot found with id {}'.format(
                 snapshot_id)
                 raise Exception(message)
-            if len(snapshot_details_json['Snapshots']['Snapshot']) == 0:
-                return None
-            snapshot = snapshot_details_json['Snapshots']['Snapshot'][0]
+            if len(snapshot_list) == 0:
+                message = 'Snapshot with id {} is not found'.format(
+                snapshot_id)
+                raise Exception(message)
+            snapshot = snapshot_list[0]
             return Snapshot(snapshot['SnapshotId'], snapshot['SourceDiskSize'], snapshot['CreationTime'], snapshot['Status'])
         except Exception as error:
             self.logger.error('[ALI] ERROR: Error in getting snapshot {}.\n{}'.format(
@@ -326,12 +290,11 @@ class AliClient(BaseClient):
             get_attached_volume_req_params = {
                 'PageSize' : 10,
                 'RegionId' : region_id,
-                'InstanceId' : [instance_id]
+                'InstanceId' : instance_id
             }
             get_attached_volume_request = self._get_common_request('DescribeDisks', get_attached_volume_req_params)
             volume_details = self.compute_client.do_action_with_exception(get_attached_volume_request)
             volume_details_json = json.loads(volume_details.decode('utf-8'))
-
             volume_list = []
             for disk in volume_details_json['Disks']['Disk']:
                 device = disk['Device']

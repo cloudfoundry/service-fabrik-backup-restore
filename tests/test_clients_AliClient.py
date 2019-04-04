@@ -2,6 +2,11 @@ from tests.utils.utilities import create_start_patcher, stop_all_patchers
 
 from lib.clients.AliClient import AliClient
 from lib.clients.BaseClient import BaseClient
+from lib.models.Snapshot import Snapshot
+from lib.models.Volume import Volume
+import unittest.mock
+from unittest.mock import patch
+from unittest.mock import Mock
 
 import oss2
 import os
@@ -9,8 +14,14 @@ import pytest
 
 #Test data
 valid_container = 'backup-container'
+valid_disk_name = 'disk-id'
 invalid_container = 'invalid-container'
-
+availability_zone = 'eu-central-1a'
+endpoint = 'endpoint-name'
+secret = 'xyz'
+access_key = 'key-id'
+secret_access_key = 'secret-key'
+region_id = 'xyz'
 configuration = {
     'credhub_url' : None,
     'type' : 'online',
@@ -19,11 +30,25 @@ configuration = {
     'secret' : 'xyz',
     'job_name' : 'service-job-name',
     'container' : valid_container,
-    'access_key_id' : 'key-id',
-    'secret_access_key' : 'secret-key',
-    'endpoint': 'endpoint-name',
-    'region_name' : 'xyz'
+    'access_key_id' : access_key,
+    'secret_access_key' : secret_access_key,
+    'endpoint': endpoint,
+    'region_name' : region_id
 }
+snapshot_id = 'snapshot-id'
+snapshot_delete_id = 'snapshot-delete-id'
+source_disk_size = '20'
+snapshot_creation_time = '2019-04-04T08:12:53Z'
+valid_vm_id = 'vm-id'
+ephemeral_disk_device_id = '/dev/xvdb'
+ephemeral_disk_id = 'ed1'
+ephemeral_disk_size = '20'
+
+persistent_disk_device_id = '/dev/xvdc'
+persistent_disk_id = 'pd1'
+persistent_disk_size = '20'
+
+invalid_vm_id = 'invalid-vm-id'
 
 directory_persistent = '/var/vcap/store'
 directory_work_list = '/tmp'
@@ -33,8 +58,21 @@ poll_maximum_time = 60
 
 operation_name = 'backup'
 
+bucket = {
+    'kind': 'storage#bucket',
+    'id': valid_container,
+    'selfLink': 'https://something.com/storage/v1/b/' + valid_container,
+    'projectNumber': '11111',
+    'name': valid_container,
+    'timeCreated': '2017-12-24T10:23:50.348Z',
+    'updated': '2017-12-24T10:23:50.348Z',
+    'metageneration': '1',
+    "location": 'EUROPE-CENTRAL1',
+    'storageClass': 'REGIONAL',
+    'etag': 'CAE='
+}
+
 def mock_shell(command):
-    print(command)
     if command == ('cat /proc/mounts | grep '+ directory_persistent):
         return valid_volume_device
 
@@ -75,27 +113,178 @@ def get_dummy_ali_session():
 def get_dummy_container(auth, endpoint):
     return OssDummy.Bucket(configuration['container'])
 
-class TestAwsClient:
+
+class CR:
+    def __init__(self):
+        self.params = {}
+        self.action = None
+        self.domain = None
+        self.version = None
+    def set_domain(self, domain):
+        self.domain = domain
+    def set_version(self, version):
+        self.version = version
+    def set_action_name(self, action):
+        self.action = action
+    def add_query_param(self, key, value):
+        self.params[key] = value
+
+class ComputeClient:
+        def do_action_with_exception(self, req):
+            action = req.action
+            params = req.params
+            response = None
+            if action == 'DescribeInstances':
+                response = '{"Instances":{"Instance":[{"ZoneId":"'+availability_zone+'"}]}}'
+                return response.encode('utf-8')
+            elif action == 'CreateSnapshot':
+                assert params['DiskId'] == valid_disk_name
+                assert params['SnapshotName'] is not None
+                assert params['Description'] == 'test-backup'
+
+                response = '{"SnapshotId": "'+snapshot_id+'"}'
+                return response.encode('utf-8')
+            elif action == 'DescribeSnapshots':
+                assert params['PageSize'] == 10
+                assert params['RegionId'] == region_id
+                assert snapshot_id in params['SnapshotIds'] or snapshot_delete_id in params['SnapshotIds'] 
+                if(params['SnapshotIds'][0] == snapshot_delete_id):
+                    response = '{"Snapshots":{"Snapshot":[]}}'
+                else:
+                    response = '{"Snapshots":{"Snapshot":[{"SnapshotId":"'\
+                        +snapshot_id+'", "SourceDiskSize": '+source_disk_size+', "CreationTime": "'+snapshot_creation_time+'", "Status":"accomplished"}]}}'
+                return response.encode('utf-8')
+            elif action == 'DeleteSnapshot':
+                assert params['SnapshotId'] in (snapshot_id, snapshot_delete_id)
+                return
+            elif action == 'DescribeDisks':
+                assert params['PageSize'] == 10
+                assert params['RegionId'] == region_id
+                assert params['InstanceId'] == valid_vm_id                
+                response = '{"Disks":{"Disk":[{"DiskId":"'\
+                        +ephemeral_disk_id+'", "Size": '+ephemeral_disk_size+', "Device": "'+ephemeral_disk_device_id+'", "Status":"In_use"}, {"DiskId":"'\
+                        +persistent_disk_id+'", "Size": '+persistent_disk_size+', "Device": "'+persistent_disk_device_id+'", "Status":"In_use"}]}}'
+                return response.encode('utf-8')
+
+            return response
+class StorageClient:
+    def Auth(access_key, secret_key):
+        if access_key == 'key-id' and secret_key == 'secret-key':
+            return 'storage-client'
+        else:
+            raise Exception('Invalid credentials')
+    def Bucket(storage_client, endpoint, container):
+        if container == valid_container:
+            return bucket
+        elif container == invalid_container:
+            raise NotFound()
+class Bucket:
+    def __init__(self, name):
+        self.name = name
+    def put_object(self, key, value):
+        if self.name == valid_container:
+            return
+    def delete_object(self, key):
+        if self.name == valid_container:
+            return
+
+
+class TestAliClient:
+    # Store all patchers
     patchers = []
     @classmethod
     def setup_class(self):
-        #self.patchers.append(create_start_patcher(patch_function='__init__',patch_object=AliClient,side_effect=get_dummy_ali_session)['patcher'])
-        self.patchers.append(create_start_patcher(patch_function='get_container',patch_object=AliClient,side_effect=get_dummy_container)['patcher'])
-        self.patchers.append(create_start_patcher(patch_function='last_operation', patch_object=BaseClient)['patcher'])
-        self.patchers.append(create_start_patcher(patch_function='shell', patch_object=BaseClient, side_effect=mock_shell)['patcher'])
+        # self.patchers.append(create_start_patcher(patch_function='__init__',patch_object=AliClient,side_effect=get_dummy_ali_session)['patcher'])
+        # self.patchers.append(create_start_patcher(patch_function='get_container',patch_object=AliClient,side_effect=get_dummy_container)['patcher'])
+        # self.patchers.append(create_start_patcher(patch_function='last_operation', patch_object=BaseClient)['patcher'])
+        # self.patchers.append(create_start_patcher(patch_function='shell', patch_object=BaseClient, side_effect=mock_shell)['patcher'])
+        self.patchers.append(create_start_patcher(
+            patch_function='lib.clients.AliClient.AcsClient', return_value=ComputeClient()))
+        self.patchers.append(create_start_patcher(
+            patch_function='lib.clients.AliClient.oss2.Auth', return_value=StorageClient()))
+        self.patchers.append(create_start_patcher(
+            patch_function='lib.clients.AliClient.oss2.Bucket', return_value=Bucket(valid_container)))
+        self.patchers.append(create_start_patcher(
+            patch_function='lib.clients.AliClient.CommonRequest', return_value=CR()))
         os.environ['SF_BACKUP_RESTORE_LOG_DIRECTORY'] = log_dir
         os.environ['SF_BACKUP_RESTORE_LAST_OPERATION_DIRECTORY'] = log_dir
-
-        self.testAliClient = AliClient(operation_name, configuration, directory_persistent, directory_work_list,poll_delay_time, poll_maximum_time)
+        self.aliClient = AliClient(operation_name, configuration, directory_persistent, directory_work_list,
+                                   poll_delay_time, poll_maximum_time)
 
     @classmethod
     def teardown_class(self):
-        stop_all_patchers(self.patchers)
+        patcher_names = []
+        for patcher in self.patchers:
+            patcher_names.append(patcher['patcher'])
+        stop_all_patchers(patcher_names)
 
-    def test_create_aws_client(self):
-       assert isinstance(self.testAliClient.container, OssDummy.Bucket)
+    def test_creates_ali_client_successfully(self):
+        assert self.aliClient.compute_client is not None
+        assert self.aliClient.storage_client is not None
+        assert self.aliClient.container.name == valid_container
+        assert self.aliClient.endpoint == endpoint
+        assert self.aliClient.availability_zone == availability_zone
+        self.patchers[0]['patcher_start'].assert_called_once()
+        self.patchers[0]['patcher_start'].assert_called_with(access_key, secret_access_key, secret, auto_retry=True,
+            max_retry_time=10, timeout=30)
+        self.patchers[1]['patcher_start'].assert_called_once()
+        self.patchers[1]['patcher_start'].assert_called_with(access_key, secret_access_key)
+        self.patchers[2]['patcher_start'].assert_called_once()
+        self.patchers[2]['patcher_start'].assert_called_with(self.aliClient.storage_client, self.aliClient.endpoint, self.aliClient.CONTAINER)
+        self.patchers[3]['patcher_start'].assert_called_once()
+        self.patchers[3]['patcher_start'].assert_called_with()
+    
+    def test_gets_container_successfully(self):
+        assert self.aliClient.get_container() is  self.aliClient.container
+        assert self.patchers[2]['patcher_start'].call_count == 2
+    
+    def test_creates_snapshot_successfully(self):
+        snapshot = self.aliClient._create_snapshot(
+            valid_disk_name, 'test-backup')
+        assert snapshot.id == snapshot_id
+        assert snapshot.status == 'accomplished'
+        assert snapshot.start_time == snapshot_creation_time
+        assert snapshot.size == 20
+    
+    def test_is_snapshot_ready_returns_true(self):
+        is_ready = self.aliClient._is_snapshot_ready(
+            snapshot_id)
+        assert is_ready == True
+    
 
-    def test_get_container_exception(self):
-       with pytest.raises(Exception):
-            container = self.testAliClient.OssDummy.Bucket(invalid_container)
-            assert container is None
+    def test_deletes_snapshot_successfully(self):
+        deleted = self.aliClient._delete_snapshot(
+            snapshot_delete_id)
+        assert deleted == True
+    
+    def test_gets_snapshot_successfully(self):
+        expected_snapshot = Snapshot(snapshot_id, 20, snapshot_creation_time, 'accomplished')
+        snapshot = self.aliClient.get_snapshot(
+            snapshot_id)
+        assert snapshot.id == expected_snapshot.id
+        assert snapshot.status == expected_snapshot.status
+        assert snapshot.start_time == expected_snapshot.start_time
+        assert snapshot.size == expected_snapshot.size
+    
+    def test_gets_attached_volumes_for_instance(self):
+        volume_list = self.aliClient.get_attached_volumes_for_instance(valid_vm_id)
+
+        assert volume_list[0].id == ephemeral_disk_id
+        assert volume_list[0].status == 'In_use'
+        assert volume_list[0].size == int(ephemeral_disk_size)
+        assert volume_list[0].device == ephemeral_disk_device_id
+        assert volume_list[1].id == persistent_disk_id
+        assert volume_list[1].status == 'In_use'
+        assert volume_list[1].size == int(persistent_disk_size)
+        assert volume_list[1].device == persistent_disk_device_id
+
+        
+        
+    
+    
+    
+        
+        
+        
+        
+    
