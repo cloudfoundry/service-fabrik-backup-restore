@@ -299,8 +299,8 @@ class AliClient(BaseClient):
             for disk in volume_details_json['Disks']['Disk']:
                 device = disk['Device']
                 #  Device information of the related instance, such as /dev/xvdb
-                # It is null unless the Status  is In Use (In_use).
-                if device is not None:
+                # It is null unless the Status is In Use (In_use).
+                if device:
                     volume_list.append(
                         Volume(disk['DiskId'], disk['Status'], disk['Size'], device))
             return volume_list
@@ -322,7 +322,7 @@ class AliClient(BaseClient):
                 return volume
         return None
 
-    def _is_volume_ready(self, disk_id, region_id, attached_vol=False):
+    def _is_volume_ready(self, disk_id, attached_vol=False):
         """Gets the disk state.
         https://www.alibabacloud.com/help/doc-detail/25626.htm?spm=a2c63.p38356.879954.9.67f065dd0XjNkR#DiskItemType
         Status can be "In_use" or "Available" or "Attaching" or "Detaching" or "Creating" or "ReIniting"
@@ -330,48 +330,43 @@ class AliClient(BaseClient):
         # Try until disk state is either "Available" or "In_use"
         # Retries for failures also
         try:
-            get_disk_req_params = {
-                'PageSize' : 10,
-                'RegionId' : region_id,
-                'DiskIds' : [disk_id]
-            }
-            get_disk_request = self._get_common_request('DescribeDisks', get_disk_req_params)
-            disk_details = self.compute_client.do_action_with_exception(get_disk_request)
-            disk_details_json = json.loads(disk_details.decode('utf-8'))
-            if len(disk_details_json['Disks']['Disk']) > 1:
-                self.logger.error('[ALI] ERROR: More than 1 disks found for with disk_id {}'.format(
-                disk_id))
-                return False
-            disk_state = disk_details_json['Disks']['Disk'][0]['Status']
-            if disk_state in ('Available', 'In_use'):
-                # State has to be In_use once attached
-                if attached_vol and disk_state == 'Available':
+            volume_list = self._get_volume_list(disk_id)
+            if len(volume_list) == 1 and volume_list[0]['Status'] in ('Available', 'In_use'):
+                if attached_vol and volume_list[0]['Status'] != 'In_use':
                     return False
                 return True
             return False
         except Exception as error:
             self.logger.error(
-                '[ALI] ERROR: Unable to get snapshot details for snapshot id {}.\n{}'.format(snapshot_id, error))
+                '[ALI] ERROR: Unable to get volume details for volume id {}.\n{}'.format(disk_id, error))
             return False
+
+    def _get_volume_list(self, volume_id):
+        region_id = self.__aliCredentials['region_name']
+        get_volume_req_params = {
+            'PageSize' : 10,
+            'RegionId' : region_id,
+            'DiskIds' : [volume_id]
+        }
+        get_volume_request = self._get_common_request('DescribeDisks', get_volume_req_params)
+        volume_details = self.compute_client.do_action_with_exception(get_volume_request)
+        volume_details_json = json.loads(volume_details.decode('utf-8'))
+        return volume_details_json['Disks']['Disk']
 
     def get_volume(self, volume_id):
         try:
+            volume_list = self._get_volume_list(volume_id)
             region_id = self.__aliCredentials['region_name']
-            get_volume_req_params = {
-                'PageSize' : 10,
-                'RegionId' : region_id,
-                'DiskIds' : [volume_id]
-            }
-            get_volume_request = self._get_common_request('DescribeDisks', get_volume_req_params)
-            volume_details = self.compute_client.do_action_with_exception(get_volume_request)
-            volume_details_json = json.loads(volume_details.decode('utf-8'))
-            if len(volume_details_json['Disks']['Disk']) > 1:
+            
+            if len(volume_list) > 1:
                 message = 'More than 1 volumes found for with id {}'.format(
                 volume_id)
                 raise Exception(message)
-            if len(volume_details_json['Disks']['Disk']) == 0:
-                return None
-            volume = volume_details_json['Disks']['Disk'][0]
+            if len(volume_list) == 0:
+                message = 'Volume with id {} is not found'.format(
+                volume_id)
+                raise Exception(message)
+            volume = volume_list[0]
             return Volume(volume['DiskId'], volume['Status'], volume['Size'])
         except Exception as error:
             self.logger.error(
@@ -403,9 +398,9 @@ class AliClient(BaseClient):
             disk_id = volume_details_json['DiskId']
 
             self._wait('Waiting for volume {} to get ready...'.format(disk_name),
-                       (lambda disk_id, region_id: self._is_volume_ready(disk_id, region_id)),
+                       (lambda disk_id: self._is_volume_ready(disk_id)),
                        None,
-                       disk_id, region_id)
+                       disk_id)
 
             volume = self.get_volume(disk_id)
             if volume and volume.status in ('Available', 'In_use'):
@@ -425,26 +420,6 @@ class AliClient(BaseClient):
             raise Exception(message)
         return volume
 
-    def volume_exists(self, volume_id):
-        try:
-            region_id = self.__aliCredentials['region_name']
-            get_volume_req_params = {
-                'PageSize' : 10,
-                'RegionId' : region_id,
-                'DiskIds' : [volume_id]
-            }
-            get_volume_request = self._get_common_request('DescribeDisks', get_volume_req_params)
-            volume_details = self.compute_client.do_action_with_exception(get_volume_request)
-            volume_details_json = json.loads(volume_details.decode('utf-8'))
-            if len(volume_details_json['Disks']['Disk']) != 0:
-                return False
-            return True
-        except Exception as error:
-            message = '[ALI] ERROR: Unable to get disk {}.\n{}'.format(
-                volume_id, error)
-            self.logger.error(message)
-            raise Exception(message)
-
     def _delete_volume(self, volume_id):
         log_prefix = '[VOLUME] [DELETE]'
         try:
@@ -452,27 +427,17 @@ class AliClient(BaseClient):
                 'DiskId': volume_id
             }
             volume_deletion_request = self._get_common_request('DeleteDisk', volume_deletion_req_params)
-            volume_deletion_operation = self.compute_client.do_action_with_exception(snpshot_deletion_request)
+            volume_deletion_operation = self.compute_client.do_action_with_exception(volume_deletion_request)
 
             self._wait('Waiting for disk {} to be deleted...'.format(volume_id),
-                       lambda id: not self.get_volume(id),
+                       lambda volume_id: len(self._get_volume_list(volume_id)) == 0,
                        None,
                        volume_id)
-            
-            volume_exists = self.volume_exists(volume_id)
-
-            # Check if volume exists, if not then it is successfully deleted, else raise exception
-            if not volume_exists:
-                self._remove_volume(volume_id)
-                self.logger.info(
-                    '{} SUCCESS: volume-id={}'.format(
-                        log_prefix, volume_id))
-                return True
-            else:
-                message = '{} ERROR: volume-id={}, volume still exists'.format(
-                    log_prefix, volume_id)
-                self.logger.error(message)
-                raise Exception(message)
+            self._remove_volume(volume_id)
+            self.logger.info(
+                '{} SUCCESS: volume-id={}'.format(
+                    log_prefix, volume_id))
+            return True
         except Exception as error:
             message = '{} ERROR: volume-id={}\n{}'.format(
                 log_prefix, volume_id, error)
@@ -481,17 +446,8 @@ class AliClient(BaseClient):
 
     def _find_volume_device(self, volume_id):
         try:
-            device = None
-            region_id = self.__aliCredentials['region_name']
-            get_volume_req_params = {
-                'PageSize' : 10,
-                'RegionId' : region_id,
-                'DiskIds' : [volume_id]
-            }
-            get_volume_request = self._get_common_request('DescribeDisks', get_volume_req_params)
-            volume_details = self.compute_client.do_action_with_exception(get_volume_request)
-            volume_details_json = json.loads(volume_details.decode('utf-8'))
-            return volume_details_json['Disks']['Disk'][0]['Device']
+            volume_list = self._get_volume_list(volume_id)
+            return volume_list[0]['Device']
         except Exception as error:
             self.logger.error(
                 '[ALI] ERROR: Unable to find device for attached volume {}.{}'.format(
@@ -504,24 +460,22 @@ class AliClient(BaseClient):
         device = None
         attachment_creation_operation = None
         try:
-            region_id = self.__aliCredentials['region_name']
             attachment_req_params = {
                 'InstanceId' : instance_id,
                 'DiskId' : volume_id
             }
             attachment_request = self._get_common_request('AttachDisk', attachment_req_params)
             attachment_creation_operation = self.compute_client.do_action_with_exception(attachment_request)
-            attachment_details_json = json.loads(attachment_creation_operation.decode('utf-8'))
             
             self._wait('Waiting for volume {} to get ready...'.format(volume_id),
-                       (lambda disk_id, region_id: self._is_volume_ready(volume_id, region_id, True)),
+                       (lambda disk_id: self._is_volume_ready(volume_id, True)),
                        None,
-                       volume_id, region_id)
+                       volume_id)
             
             # Raise exception if device returned in None,
             # as it might mean that disk was not attached properly
             device = self._find_volume_device(volume_id)
-            if device is not None:
+            if device:
                 self.logger.info(
                     'Attached volume-id={}, device={}'.format(volume_id, device))
                 self._add_volume_device(volume_id, device)
@@ -548,16 +502,13 @@ class AliClient(BaseClient):
                 if device:
                     self.logger.warning('[VOLUME] [DELETE] Volume is attached although the attaching process failed, '
                                     'triggering detachment')
-                    attachment = True
-                if attachment:
-                    self.delete_attachment(volume_id, instance_id)
-                    attachment = None
+                self.delete_attachment(volume_id, instance_id)
             raise Exception(message)
+        return attachment
 
     def _delete_attachment(self, volume_id, instance_id):
         log_prefix = '[ATTACHMENT] [DELETE]'
         try:
-            region_id = self.__aliCredentials['region_name']
             delete_attachment_req_params = {
                 'InstanceId' : instance_id,
                 'DiskId' : volume_id
@@ -566,9 +517,9 @@ class AliClient(BaseClient):
             attachment_deletion_operation = self.compute_client.do_action_with_exception(delete_attachment_request)
             
             self._wait('Waiting for attachment of volume {} to be deleted...'.format(volume_id),
-                       (lambda disk_id, region_id: self._is_volume_ready(volume_id, region_id)),
+                       (lambda disk_id: self._is_volume_ready(volume_id)),
                        None,
-                       volume_id, region_id)
+                       volume_id)
             
             self._remove_volume_device(volume_id)
             self._remove_attachment(volume_id, instance_id)

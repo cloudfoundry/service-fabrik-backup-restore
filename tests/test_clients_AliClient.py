@@ -45,8 +45,12 @@ ephemeral_disk_id = 'ed1'
 ephemeral_disk_size = '20'
 
 persistent_disk_device_id = '/dev/xvdc'
+persistent_disk_mount_device_id = '/dev/vdc'
 persistent_disk_id = 'pd1'
 persistent_disk_size = '20'
+
+disk_delete_id = 'deletedisk1'
+disk_detach_id = 'detachdisk1'
 
 invalid_vm_id = 'invalid-vm-id'
 
@@ -160,11 +164,42 @@ class ComputeClient:
             elif action == 'DescribeDisks':
                 assert params['PageSize'] == 10
                 assert params['RegionId'] == region_id
-                assert params['InstanceId'] == valid_vm_id                
-                response = '{"Disks":{"Disk":[{"DiskId":"'\
-                        +ephemeral_disk_id+'", "Size": '+ephemeral_disk_size+', "Device": "'+ephemeral_disk_device_id+'", "Status":"In_use"}, {"DiskId":"'\
-                        +persistent_disk_id+'", "Size": '+persistent_disk_size+', "Device": "'+persistent_disk_device_id+'", "Status":"In_use"}]}}'
+                assert "InstanceId" in params or "DiskIds" in params
+                if "InstanceId" in params:
+                    assert params['InstanceId'] == valid_vm_id
+                    response = '{"Disks":{"Disk":[{"DiskId":"'\
+                            +ephemeral_disk_id+'", "Size": '+ephemeral_disk_size+', "Device": "'+ephemeral_disk_device_id+'", "Status":"In_use"}, {"DiskId":"'\
+                            +persistent_disk_id+'", "Size": '+persistent_disk_size+', "Device": "'+persistent_disk_device_id+'", "Status":"In_use"}]}}'
+                if "DiskIds" in params:
+                    disk_id = params['DiskIds'][0]
+                    status = 'Available' if disk_id == disk_detach_id else 'In_use'
+                    assert disk_id in (ephemeral_disk_id, disk_delete_id, disk_detach_id)
+                    if (disk_id == disk_delete_id):
+                        response = '{"Disks":{"Disk":[]}}'
+                    else:
+                        response = '{"Disks":{"Disk":[{"DiskId":"'\
+                            +disk_id+'", "Size": '+ephemeral_disk_size+', "Device": "'+ephemeral_disk_device_id+'", "Status":"'+status+'"}]}}'
                 return response.encode('utf-8')
+            elif action == 'CreateDisk':
+                assert params['RegionId'] == region_id
+                assert params['ZoneId'] == availability_zone
+                assert 'DiskName' in params
+                assert params['DiskCategory'] == 'cloud_ssd'
+                assert params['Encrypted'] == True
+                assert params['Size'] == 20
+                response = '{"DiskId": "'+ephemeral_disk_id+'"}'
+                return response.encode('utf-8')
+            elif action == 'DeleteDisk':
+                assert params['DiskId'] == disk_delete_id
+                return
+            elif action == 'AttachDisk':
+                assert params['InstanceId'] == valid_vm_id
+                assert params['DiskId'] == ephemeral_disk_id
+                return
+            elif action == 'DetachDisk':
+                assert params['InstanceId'] == valid_vm_id
+                assert params['DiskId'] == disk_detach_id
+                return
 
             return response
 class StorageClient:
@@ -188,6 +223,16 @@ class Bucket:
         if self.name == valid_container:
             return
 
+def mock_shell(command, log_command=True):
+    if command == ('cat /proc/mounts | grep ' + directory_persistent):
+        return persistent_disk_mount_device_id + '1 ' + directory_persistent + ' ext4 rw,relatime,data=ordered 0 0'
+
+def get_device_of_volume(volume_id):
+    if volume_id == persistent_disk_id:
+        return persistent_disk_device_id
+    else:
+        return None
+
 
 class TestAliClient:
     # Store all patchers
@@ -206,6 +251,10 @@ class TestAliClient:
             patch_function='lib.clients.AliClient.oss2.Bucket', return_value=Bucket(valid_container)))
         self.patchers.append(create_start_patcher(
             patch_function='lib.clients.AliClient.CommonRequest', return_value=CR()))
+        self.patchers.append(create_start_patcher(
+            patch_function='shell', patch_object=BaseClient, side_effect=mock_shell))
+        self.patchers.append(create_start_patcher(
+            patch_function='_get_device_of_volume', patch_object=BaseClient, side_effect=get_device_of_volume))
         os.environ['SF_BACKUP_RESTORE_LOG_DIRECTORY'] = log_dir
         os.environ['SF_BACKUP_RESTORE_LAST_OPERATION_DIRECTORY'] = log_dir
         self.aliClient = AliClient(operation_name, configuration, directory_persistent, directory_work_list,
@@ -278,13 +327,44 @@ class TestAliClient:
         assert volume_list[1].size == int(persistent_disk_size)
         assert volume_list[1].device == persistent_disk_device_id
 
+    def test_gets_persistent_volume_for_instance(self):
+        volume = self.aliClient.get_persistent_volume_for_instance(valid_vm_id)
         
-        
+        assert volume.id == persistent_disk_id
+        assert volume.status == 'In_use'
+        assert volume.size == int(persistent_disk_size)
+        assert volume.device == persistent_disk_device_id
+        self.patchers[4]['patcher_start'].call_count == 2
     
+    def test_gets_volume_successfully(self):
+        volume = self.aliClient.get_volume(ephemeral_disk_id)
+
+        assert volume.id == ephemeral_disk_id
+        assert volume.status == 'In_use'
+        assert volume.size == int(ephemeral_disk_size)
+
+    def test_creates_volume_successfully(self):
+        volume = self.aliClient._create_volume(20)
+
+        assert volume.id == ephemeral_disk_id
+        assert volume.status == 'In_use'
+        assert volume.size == int(ephemeral_disk_size)
+
+    def test_deletes_volume_successfully(self):
+        deleted = self.aliClient._delete_volume(disk_delete_id)
+
+        assert deleted == True
+
+    def test_create_attachment_successfully(self):
+        attachment = self.aliClient._create_attachment(ephemeral_disk_id, valid_vm_id)
+
+        assert attachment.volume_id == ephemeral_disk_id
+        assert attachment.instance_id == valid_vm_id
     
-    
-        
-        
-        
-        
-    
+    def test_deletes_attachment_successfully(self):
+        deleted = self.aliClient._delete_attachment(disk_detach_id, valid_vm_id)
+
+        assert deleted == True
+
+    def test_gets_mounpoint_successfully(self):
+        assert self.aliClient.get_mountpoint(persistent_disk_id) == persistent_disk_mount_device_id
