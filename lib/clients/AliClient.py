@@ -178,15 +178,15 @@ class AliClient(BaseClient):
                        None,
                        snapshot_id)
 
-            snapshot = self.get_snapshot(snapshot_id)
-            if snapshot and snapshot.status == 'accomplished':
+            snapshot = self._get_snapshot_with_exception(snapshot_id)
+            if snapshot.status == 'accomplished':
                 self._add_snapshot(snapshot.id)
                 self.output_json['snapshotId'] = snapshot.id
                 self.logger.info('{} SUCCESS: snapshot-id={}, volume-id={}, status={} with tags {}'.format(
                     log_prefix, snapshot.id, volume_id, snapshot.status, self.tags))
             else:
                 message = '{} ERROR: snapshot-id={} status={}'.format(
-                    log_prefix, snapshot_name, snapshot.status if snapshot else None)
+                    log_prefix, snapshot_name, snapshot.status)
                 raise Exception(message)
         except Exception as error:
             message = '{} ERROR: volume-id={} and tags={}\n{}'.format(
@@ -199,6 +199,38 @@ class AliClient(BaseClient):
 
         return snapshot
 
+    def _get_snapshot_list(self, snapshot_id):
+        region_id = self.__aliCredentials['region_name']
+        get_snapshot_req_params = {
+            'PageSize' : 10,
+            'RegionId' : region_id,
+            'SnapshotIds' : [snapshot_id]
+        }
+        get_snapshot_request = self._get_common_request('DescribeSnapshots', get_snapshot_req_params)
+        snapshot_details = self.compute_client.do_action_with_exception(get_snapshot_request)
+        snapshot_details_json = json.loads(snapshot_details.decode('utf-8'))
+        return snapshot_details_json['Snapshots']['Snapshot']
+    
+    def _get_snapshot_with_exception(self, snapshot_id):
+        snapshot_list = self._get_snapshot_list(snapshot_id)
+        if len(snapshot_list) > 1:
+            message = 'More than 1 snapshot found with id {}'.format(
+            snapshot_id)
+            raise Exception(message)
+        if len(snapshot_list) == 0:
+            message = 'Snapshot with id {} is not found'.format(
+            snapshot_id)
+            raise Exception(message)
+        snapshot = snapshot_list[0]
+        return Snapshot(snapshot['SnapshotId'], snapshot['SourceDiskSize'], snapshot['CreationTime'], snapshot['Status'])
+
+    def get_snapshot(self, snapshot_id):
+        try:
+            return self._get_snapshot_with_exception(snapshot_id)
+        except Exception as error:
+            self.logger.error('[ALI] ERROR: Error in getting snapshot {}.\n{}'.format(
+                snapshot_name, error))
+            return None
     
     def _is_snapshot_ready(self, snapshot_id):
         """Gets the snapshot state.
@@ -206,10 +238,11 @@ class AliClient(BaseClient):
         Status can be "progressing" "accomplished" or "failed"
         """
         # Try until snapshot state is either "accomplished" or "failed"
+        # Returns True if multiple snapshots with same id are found
         # Retries for failures also
         try:
             snapshot_list = self._get_snapshot_list(snapshot_id)
-            if len(snapshot_list) == 1 and snapshot_list[0]['Status'] in ('accomplished','failed'):
+            if len(snapshot_list) > 1 or (len(snapshot_list) == 1 and snapshot_list[0]['Status'] in ('accomplished','failed')):
                 return True
             return False
         except Exception as error:
@@ -233,56 +266,17 @@ class AliClient(BaseClient):
                        lambda snapshot_id: len(self._get_snapshot_list(snapshot_id)) == 0,
                        None,
                        snapshot_id)
-            snapshot_list = self._get_snapshot_list(snapshot_id)
-
-            # Check if snapshot exists, if not then it is successfully deleted, else raise exception
-            if len(snapshot_list) == 0:
-                self._remove_snapshot(snapshot_id)
-                self.logger.info(
-                    '{} SUCCESS: snapshot-id={}'.format(
-                        log_prefix, snapshot_id))
-                return True
-            else:
-                message = '{} ERROR: snapshot-id={}, snapshot still exists'.format(
-                    log_prefix, snapshot_id)
-                self.logger.error(message)
-                raise Exception(message)
+            
+            self._remove_snapshot(snapshot_id)
+            self.logger.info(
+                '{} SUCCESS: snapshot-id={}'.format(
+                    log_prefix, snapshot_id))
+            return True
         except Exception as error:
             message = '{} ERROR: snapshot-id={}\n{}'.format(
                 log_prefix, snapshot_id, error)
             self.logger.error(message)
             raise Exception(message)
-
-    def _get_snapshot_list(self, snapshot_id):
-        region_id = self.__aliCredentials['region_name']
-        get_snapshot_req_params = {
-            'PageSize' : 10,
-            'RegionId' : region_id,
-            'SnapshotIds' : [snapshot_id]
-        }
-        get_snapshot_request = self._get_common_request('DescribeSnapshots', get_snapshot_req_params)
-        snapshot_details = self.compute_client.do_action_with_exception(get_snapshot_request)
-        snapshot_details_json = json.loads(snapshot_details.decode('utf-8'))
-        return snapshot_details_json['Snapshots']['Snapshot']
-
-    def get_snapshot(self, snapshot_id):
-        try:
-            snapshot_list = self._get_snapshot_list(snapshot_id)
-            if len(snapshot_list) > 1:
-                message = 'More than 1 snapshot found with id {}'.format(
-                snapshot_id)
-                raise Exception(message)
-            if len(snapshot_list) == 0:
-                message = 'Snapshot with id {} is not found'.format(
-                snapshot_id)
-                raise Exception(message)
-            snapshot = snapshot_list[0]
-            return Snapshot(snapshot['SnapshotId'], snapshot['SourceDiskSize'], snapshot['CreationTime'], snapshot['Status'])
-        except Exception as error:
-            self.logger.error('[ALI] ERROR: Error in getting snapshot {}.\n{}'.format(
-                snapshot_name, error))
-            return None
-
 
     def get_attached_volumes_for_instance(self, instance_id):
         try:
@@ -328,9 +322,12 @@ class AliClient(BaseClient):
         Status can be "In_use" or "Available" or "Attaching" or "Detaching" or "Creating" or "ReIniting"
         """
         # Try until disk state is either "Available" or "In_use"
+        # Returns True if multiple volumes with same id are found
         # Retries for failures also
         try:
             volume_list = self._get_volume_list(disk_id)
+            if len(volume_list) > 1:
+                return True
             if len(volume_list) == 1 and volume_list[0]['Status'] in ('Available', 'In_use'):
                 if attached_vol and volume_list[0]['Status'] != 'In_use':
                     return False
@@ -353,21 +350,22 @@ class AliClient(BaseClient):
         volume_details_json = json.loads(volume_details.decode('utf-8'))
         return volume_details_json['Disks']['Disk']
 
+    def _get_volume_with_exception(self, volume_id):
+        volume_list = self._get_volume_list(volume_id)
+        if len(volume_list) > 1:
+            message = 'More than 1 volumes found for with id {}'.format(
+            volume_id)
+            raise Exception(message)
+        if len(volume_list) == 0:
+            message = 'Volume with id {} is not found'.format(
+            volume_id)
+            raise Exception(message)
+        volume = volume_list[0]
+        return Volume(volume['DiskId'], volume['Status'], volume['Size'])
+
     def get_volume(self, volume_id):
         try:
-            volume_list = self._get_volume_list(volume_id)
-            region_id = self.__aliCredentials['region_name']
-            
-            if len(volume_list) > 1:
-                message = 'More than 1 volumes found for with id {}'.format(
-                volume_id)
-                raise Exception(message)
-            if len(volume_list) == 0:
-                message = 'Volume with id {} is not found'.format(
-                volume_id)
-                raise Exception(message)
-            volume = volume_list[0]
-            return Volume(volume['DiskId'], volume['Status'], volume['Size'])
+            return self._get_volume_with_exception(volume_id)
         except Exception as error:
             self.logger.error(
                 '[ALI] ERROR: Unable to find or access volume/disk {}.\n{}'.format(
@@ -402,14 +400,14 @@ class AliClient(BaseClient):
                        None,
                        disk_id)
 
-            volume = self.get_volume(disk_id)
-            if volume and volume.status in ('Available', 'In_use'):
+            volume = self._get_volume_with_exception(disk_id)
+            if volume.status in ('Available', 'In_use'):
                 self._add_volume(volume.id)
                 self.logger.info('{} SUCCESS: volume-id={} with tags={} '.format(
                     log_prefix, volume.id, self.tags))
             else:
                 message = '{} ERROR: volume-id={} status={}'.format(
-                    log_prefix, volume.id if volume else None, volume.status if volume else None)
+                    log_prefix, volume.id, volume.statuse)
                 raise Exception(message)
         except Exception as error:
             message = '{} ERROR: size={}\n{}'.format(log_prefix, size, error)
@@ -447,6 +445,14 @@ class AliClient(BaseClient):
     def _find_volume_device(self, volume_id):
         try:
             volume_list = self._get_volume_list(volume_id)
+            if len(volume_list) > 1:
+                message = 'More than 1 volumes found for with id {}'.format(
+                volume_id)
+                raise Exception(message)
+            if len(volume_list) == 0:
+                message = 'Volume with id {} is not found'.format(
+                volume_id)
+                raise Exception(message)
             return volume_list[0]['Device']
         except Exception as error:
             self.logger.error(
