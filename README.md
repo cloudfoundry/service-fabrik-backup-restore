@@ -128,6 +128,23 @@ python3 test_br.py                     \
   --region_name=<region>
 ```
 
+For ALI the script can be invoked as:
+
+```
+python3 test_br.py                     \
+  --iaas=ali                           \
+  --type=online                        \
+  --backup_guid=bkp_guid               \
+  --instance_id=< i-0dccbdfa125b9781c> \
+  --secret=xxxxxxxx                    \
+  --container=<container>              \
+  --job_name=<name>                    \
+  --access_key_id=<key>                \
+  --secret_access_key=<accesskey>      \
+  --region_name=<region>               \
+  --endpoint=<endpoint>
+```
+
 ## How to obtain support
  
 If you need any support, have any question or have found a bug, please report it in the [GitHub bug tracking system](https://github.com/sap/service-fabrik-backup-restore/issues). We shall get back to you.
