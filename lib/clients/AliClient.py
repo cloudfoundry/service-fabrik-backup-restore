@@ -229,7 +229,7 @@ class AliClient(BaseClient):
             return self._get_snapshot_with_exception(snapshot_id)
         except Exception as error:
             self.logger.error('[ALI] ERROR: Error in getting snapshot {}.\n{}'.format(
-                snapshot_name, error))
+                snapshot_id, error))
             return None
     
     def _is_snapshot_ready(self, snapshot_id):
@@ -412,8 +412,8 @@ class AliClient(BaseClient):
         except Exception as error:
             message = '{} ERROR: size={}\n{}'.format(log_prefix, size, error)
             self.logger.error(message)
-            if volume:
-                self.delete_volume(volume.id)
+            if volume or disk_creation_operation:
+                self.delete_volume(disk_id)
                 volume = None
             raise Exception(message)
         return volume
@@ -474,7 +474,7 @@ class AliClient(BaseClient):
             attachment_creation_operation = self.compute_client.do_action_with_exception(attachment_request)
             
             self._wait('Waiting for volume {} to get ready...'.format(volume_id),
-                       (lambda disk_id: self._is_volume_ready(volume_id, True)),
+                       (lambda volume_id: self._is_volume_ready(volume_id, True)),
                        None,
                        volume_id)
             
