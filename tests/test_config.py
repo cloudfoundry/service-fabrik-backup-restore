@@ -159,7 +159,7 @@ class TestConfig():
         
         directory_logfile = os.getenv('SF_BACKUP_RESTORE_LOG_DIRECTORY')
         directory_last_operation = os.getenv('SF_BACKUP_RESTORE_LAST_OPERATION_DIRECTORY')
-        for operation in ['backup', 'restore', 'blob_operation']:   
+        for operation in ['backup', 'restore']:   
             # +-> Define paths for log and last operation file
             path_log = os.path.join(directory_logfile, operation + '.log')
             path_blue = os.path.join(directory_last_operation, operation + '.lastoperation.blue.json')
