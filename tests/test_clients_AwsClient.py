@@ -187,7 +187,6 @@ class TestAwsClient:
         assert isinstance(self.testAwsClient.ec2.client, EC2ClientDummy)
         assert isinstance(self.testAwsClient.s3.client, S3ClientDummy)
         assert self.testAwsClient.availability_zone == availability_zone
-<<<<<<< HEAD
 
     def test_create_aws_client_blob_ops(self):
         assert isinstance(self.testAwsClientBlobOps.s3, S3Dummy)
@@ -199,9 +198,3 @@ class TestAwsClient:
         with pytest.raises(Exception):
             container = self.testAwsClient.s3.Bucket(invalid_container)
             assert container is None
-<<<<<<< HEAD
-
-=======
->>>>>>> Added initial UT framework for AwsClient
-=======
->>>>>>> Adding and modifying UTs
