@@ -98,9 +98,11 @@ def _get_parameters_restore_optional():
 def _get_parameters_blob_operation():
     return merge_dict(parameters, parameters_blob_operation)
 
-# this function will remove all the files in the directories pointed by SF_BACKUP_RESTORE_LOG_DIRECTORY
-# and SF_BACKUP_RESTORE_LAST_OPERATION_DIRECTORY
 def remove_old_logs_state():
+    """
+    Remove all the files in the directories pointed by SF_BACKUP_RESTORE_LOG_DIRECTORY
+    and SF_BACKUP_RESTORE_LAST_OPERATION_DIRECTORY
+    """
     directory_logfile = os.getenv('SF_BACKUP_RESTORE_LOG_DIRECTORY')
     directory_last_operation = os.getenv('SF_BACKUP_RESTORE_LAST_OPERATION_DIRECTORY')
 
@@ -108,7 +110,7 @@ def remove_old_logs_state():
     assert directory_logfile is not None, 'SF_BACKUP_RESTORE_LOG_DIRECTORY environment variable is not set.'
     assert directory_last_operation is not None, 'SF_BACKUP_RESTORE_LAST_OPERATION_DIRECTORY environment variable is not set.'
 
-    for operation in ['backup', 'restore', 'blob_operation']:   
+    for operation in ['backup', 'restore']:   
         # +-> Define paths for log and last operation file
         path_log = os.path.join(directory_logfile, operation + '.log')
         path_blue = os.path.join(directory_last_operation, operation + '.lastoperation.blue.json')
