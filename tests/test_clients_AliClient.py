@@ -361,12 +361,12 @@ class TestAliClient:
         assert self.aliClient.container.name == valid_container
         assert self.aliClient.endpoint == endpoint
         assert self.aliClient.availability_zone == availability_zone
-        self.patchers[0]['patcher_start'].assert_called_once()
+        self.patchers[0]['patcher_start'].call_count == 1
         self.patchers[0]['patcher_start'].assert_called_with(access_key, secret_access_key, secret, auto_retry=True,
             max_retry_time=10, timeout=30)
-        self.patchers[1]['patcher_start'].assert_called_once()
+        self.patchers[1]['patcher_start'].call_count == 1
         self.patchers[1]['patcher_start'].assert_called_with(access_key, secret_access_key)
-        self.patchers[2]['patcher_start'].assert_called_once()
+        self.patchers[2]['patcher_start'].call_count == 1
         self.patchers[2]['patcher_start'].assert_called_with(self.aliClient.storage_client, self.aliClient.endpoint, self.aliClient.CONTAINER)
     
     def test_ali_uploads_to_blobstore(self):

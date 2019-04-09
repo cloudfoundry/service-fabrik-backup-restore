@@ -68,25 +68,25 @@ class TestIndex:
 
     def test_create_iaas_client(self):
         dummy_iaas_client = create_iaas_client('backup', configuration_aws, directory_persistent, directory_work_list)
-        self.awsClientPatch.assert_called_once()
+        self.awsClientPatch.call_count == 1
 
         dummy_iaas_client = create_iaas_client('backup', configuration_azure, directory_persistent, directory_work_list)
-        self.azureClientPatch.assert_called_once()
+        self.azureClientPatch.call_count == 1
 
         dummy_iaas_client = create_iaas_client('backup', configuration_gcp, directory_persistent, directory_work_list)
-        self.gcpClientPatch.assert_called_once()
+        self.gcpClientPatch.call_count == 1
 
         dummy_iaas_client = create_iaas_client('backup', configuration_openstack, directory_persistent, directory_work_list)
-        self.openstackClientPatch.assert_called_once()
+        self.openstackClientPatch.call_count == 1
 
     def test_import_error(self):
         configuration_aws['iaas'] = DummyIaasInfo('NotImplemented')
         with mock.patch('sys.exit') as mock_sys_exit:
             dummy_iaas_client = create_iaas_client('backup', configuration_aws, directory_persistent, directory_work_list)
-            mock_sys_exit.assert_called_once()
+            mock_sys_exit.call_count == 1
         configuration_aws['iaas'] = DummyIaasInfo('Aws')
 
     def test_exception_in_constructor(self):
         with mock.patch('sys.exit') as mock_sys_exit:
             dummy_iaas_client = create_iaas_client('invalid', configuration_aws, directory_persistent, directory_work_list)
-            mock_sys_exit.assert_called_once()
+            mock_sys_exit.call_count == 1
