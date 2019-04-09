@@ -286,6 +286,14 @@ class Bucket:
         if (blob_target_path == invalid_blob_path):
             raise Exception('Invalid blob target path')
         return self
+    # added this method because of issue in travice
+    # in travis python interpretor was replacing get_object() with get_object_to_file
+    def get_object_to_file(self, blob_target, blob_target_path):
+        assert blob_target_path in (valid_blob_path, invalid_blob_path)
+        assert blob_target == 'blob'
+        if (blob_target_path == invalid_blob_path):
+            raise Exception('Invalid blob target path')
+        return self
     def put_object(self, key, value):
         if self.name == valid_container:
             return
