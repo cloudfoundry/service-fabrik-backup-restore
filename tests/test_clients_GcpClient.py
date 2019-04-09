@@ -1,5 +1,6 @@
 import os
 import unittest.mock
+from tests.utils.utilities import create_start_patcher, stop_all_patchers
 import pytest
 import json
 import glob
@@ -481,28 +482,6 @@ def get_device_of_volume(volume_id):
     else:
         return None
 
-
-def create_start_patcher(patch_function, patch_object=None, return_value=None, side_effect=None):
-    if patch_object != None:
-        patcher = patch.object(patch_object, patch_function)
-    else:
-        patcher = patch(patch_function)
-
-    patcher_start = patcher.start()
-    if return_value != None:
-        patcher_start.return_value = return_value
-
-    if side_effect != None:
-        patcher_start.side_effect = side_effect
-
-    return patcher
-
-
-def stop_all_patchers(patchers):
-    for patcher in patchers:
-        patcher.stop()
-
-
 class TestGcpClient:
     # Store all patchers
     patchers = []
@@ -510,33 +489,33 @@ class TestGcpClient:
     @classmethod
     def setup_class(self):
         self.patchers.append(create_start_patcher(
-            patch_function='_get_device_of_volume', patch_object=BaseClient, side_effect=get_device_of_volume))
+            patch_function='_get_device_of_volume', patch_object=BaseClient, side_effect=get_device_of_volume)['patcher'])
         self.patchers.append(create_start_patcher(
-            patch_function='delete_snapshot', patch_object=BaseClient, return_value=True))
+            patch_function='delete_snapshot', patch_object=BaseClient, return_value=True)['patcher'])
         self.patchers.append(create_start_patcher(
-            patch_function='delete_volume', patch_object=BaseClient, return_value=True))
+            patch_function='delete_volume', patch_object=BaseClient, return_value=True)['patcher'])
         self.patchers.append(create_start_patcher(
-            patch_function='glob', patch_object=glob, side_effect=mockglob))
+            patch_function='glob', patch_object=glob, side_effect=mockglob)['patcher'])
         self.patchers.append(create_start_patcher(patch_function='generate_name_by_prefix',
-                                                  patch_object=BaseClient, side_effect=generate_name_by_prefix))
+                                                  patch_object=BaseClient, side_effect=generate_name_by_prefix)['patcher'])
         self.patchers.append(create_start_patcher(
-            patch_function='shell', patch_object=BaseClient, side_effect=shell))
+            patch_function='shell', patch_object=BaseClient, side_effect=shell)['patcher'])
         self.patchers.append(create_start_patcher(
-            patch_function='last_operation', patch_object=BaseClient))
+            patch_function='last_operation', patch_object=BaseClient)['patcher'])
         self.patchers.append(create_start_patcher(
-            patch_function='google.oauth2.service_account.Credentials.from_service_account_info'))
+            patch_function='google.oauth2.service_account.Credentials.from_service_account_info')['patcher'])
         self.patchers.append(create_start_patcher(
-            patch_function='googleapiclient.discovery.build', return_value=ComputeClient()))
+            patch_function='googleapiclient.discovery.build', return_value=ComputeClient())['patcher'])
         self.patchers.append(create_start_patcher(
-            patch_function='google.cloud.storage.Client', return_value=StorageClient()))
+            patch_function='google.cloud.storage.Client', return_value=StorageClient())['patcher'])
         self.patchers.append(create_start_patcher(
-            patch_function='google.cloud.storage.Blob.upload_from_string'))
+            patch_function='google.cloud.storage.Blob.upload_from_string')['patcher'])
         self.patchers.append(create_start_patcher(
-            patch_function='google.cloud.storage.Blob.delete'))
+            patch_function='google.cloud.storage.Blob.delete')['patcher'])
         self.patchers.append(create_start_patcher(
-            patch_function='upload_from_filename', patch_object=Blob, side_effect=upload_from_filename))
+            patch_function='upload_from_filename', patch_object=Blob, side_effect=upload_from_filename)['patcher'])
         self.patchers.append(create_start_patcher(
-            patch_function='download_to_filename', patch_object=Blob, side_effect=download_to_filename))
+            patch_function='download_to_filename', patch_object=Blob, side_effect=download_to_filename)['patcher'])
 
         os.environ['SF_BACKUP_RESTORE_LOG_DIRECTORY'] = log_dir
         os.environ['SF_BACKUP_RESTORE_LAST_OPERATION_DIRECTORY'] = log_dir
@@ -812,11 +791,11 @@ class TestGcpClientExceptions:
     @classmethod
     def setup_class(self):
         self.patchers.append(create_start_patcher(
-            patch_function='google.oauth2.service_account.Credentials.from_service_account_info'))
+            patch_function='google.oauth2.service_account.Credentials.from_service_account_info')['patcher'])
         self.patchers.append(create_start_patcher(
-            patch_function='googleapiclient.discovery.build', return_value=ComputeClient()))
+            patch_function='googleapiclient.discovery.build', return_value=ComputeClient())['patcher'])
         self.patchers.append(create_start_patcher(
-            patch_function='google.cloud.storage.Client', return_value=StorageClient()))
+            patch_function='google.cloud.storage.Client', return_value=StorageClient())['patcher'])
 
     @classmethod
     def teardown_class(self):
@@ -829,9 +808,9 @@ class TestGcpClientExceptions:
 
     def test_gcp_client_raises_availability_zone_exception(self):
         mock_blob_upload_patcher = create_start_patcher(
-            patch_function='google.cloud.storage.Blob.upload_from_string')
+            patch_function='google.cloud.storage.Blob.upload_from_string')['patcher']
         mock_blob_delete_patcher = create_start_patcher(
-            patch_function='google.cloud.storage.Blob.delete')
+            patch_function='google.cloud.storage.Blob.delete')['patcher']
         configuration['instance_id'] = invalid_vm_id
         with pytest.raises(Exception, message='Could not retrieve the availability zone of the instance.'):
             GcpClient(operation_name, configuration, directory_persistent, directory_work_list,

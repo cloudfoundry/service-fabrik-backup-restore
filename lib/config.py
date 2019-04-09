@@ -81,7 +81,6 @@ parameters_restore_optional = {
     'agent_ip': 'IP of the agent VM'
 }
 
-
 def _get_parameters_credentials():
     return parameters_credentials
 
@@ -99,17 +98,32 @@ def _get_parameters_restore_optional():
 def _get_parameters_blob_operation():
     return merge_dict(parameters, parameters_blob_operation)
 
-def parse_options(type):
-    """Parse the required command line options for the given operation type.
-
-    :param type: a string containing either `backup` or `restore`
-    :returns: a dictionary containing the key-value pairs of the provided parameters
-
-    :Example:
-        ::
-
-            configuration = parse_options('backup')
+def remove_old_logs_state():
     """
+    Remove all the files in the directories pointed by SF_BACKUP_RESTORE_LOG_DIRECTORY
+    and SF_BACKUP_RESTORE_LAST_OPERATION_DIRECTORY
+    """
+    directory_logfile = os.getenv('SF_BACKUP_RESTORE_LOG_DIRECTORY')
+    directory_last_operation = os.getenv('SF_BACKUP_RESTORE_LAST_OPERATION_DIRECTORY')
+
+    # Verify that the required environment variables are provided
+    assert directory_logfile is not None, 'SF_BACKUP_RESTORE_LOG_DIRECTORY environment variable is not set.'
+    assert directory_last_operation is not None, 'SF_BACKUP_RESTORE_LAST_OPERATION_DIRECTORY environment variable is not set.'
+
+    for operation in ['backup', 'restore']:   
+        # +-> Define paths for log and last operation file
+        path_log = os.path.join(directory_logfile, operation + '.log')
+        path_blue = os.path.join(directory_last_operation, operation + '.lastoperation.blue.json')
+        path_green = os.path.join(directory_last_operation, operation + '.lastoperation.green.json')
+        path_output_json = os.path.join(directory_logfile, operation + '.output.json')
+        
+        # +-> open a new file if it doesn't exist, and truncate if file exists.
+        open(path_log, 'w+').close()
+        open(path_blue, 'w+').close()
+        open(path_green, 'w+').close()
+        open(path_output_json, 'w+').close()
+
+def build_parser(type):
     # TODO: conflict_handler='resolve' is really required ??
     parser = ArgumentParser(conflict_handler='resolve')
     if type == 'backup':
@@ -132,6 +146,26 @@ def parse_options(type):
     for key, credentials in _get_parameters_credentials().items():
         for name, description in credentials.items():
             parser.add_argument('--{}'.format(name), help=description)
+
+    return parser
+
+def parse_options(type):
+    """Parse the required command line options for the given operation type.
+
+    :param type: a string containing either `backup` or `restore`
+    :returns: a dictionary containing the key-value pairs of the provided parameters
+
+    :Example:
+        ::
+
+            configuration = parse_options('backup')
+    """
+
+    # first, remove all the old logs and data
+    remove_old_logs_state()
+
+    parser = build_parser(type)    
+    
     configuration = vars(parser.parse_args())
     assert configuration['type'] == 'online' or configuration['type'] == 'offline', \
         '--type must be \'online\' or \'offline\''
