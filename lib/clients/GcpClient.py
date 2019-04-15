@@ -113,7 +113,7 @@ class GcpClient(BaseClient):
                 self.CONTAINER, error))
             return None
 
-    def get_snapshot(self, snapshot_name):
+    def _get_snapshot(self, snapshot_name):
         try:
             snapshot = self.compute_client.snapshots().get(
                 project=self.project_id, snapshot=snapshot_name).execute()
@@ -142,7 +142,7 @@ class GcpClient(BaseClient):
     def get_http_error_code(self, error):
         return json.loads(error.content.decode('utf-8'))['error']['code']
 
-    def get_volume(self, volume_name):
+    def _get_volume(self, volume_name):
         try:
             volume = self.compute_client.disks().get(
                 project=self.project_id, zone=self.availability_zone, disk=volume_name).execute()
@@ -238,7 +238,7 @@ class GcpClient(BaseClient):
                        None,
                        snapshot_creation_operation['name'], True)
 
-            snapshot = self.get_snapshot(snapshot_name)
+            snapshot = self._get_snapshot(snapshot_name)
             if snapshot.status == 'READY':
                 self._add_snapshot(snapshot.id)
                 self.output_json['snapshotId'] = snapshot.id
@@ -260,7 +260,7 @@ class GcpClient(BaseClient):
         return snapshot
 
     def _copy_snapshot(self, snapshot_id):
-        return self.get_snapshot(snapshot_id)
+        return self._get_snapshot(snapshot_id)
 
     def _delete_snapshot(self, snapshot_id):
         log_prefix = '[SNAPSHOT] [DELETE]'
@@ -321,7 +321,7 @@ class GcpClient(BaseClient):
                        None,
                        disk_creation_operation['name'], True)
 
-            volume = self.get_volume(disk_name)
+            volume = self._get_volume(disk_name)
 
             if volume.status == 'READY':
                 self._add_volume(volume.id)

@@ -113,7 +113,7 @@ class AzureClient(BaseClient):
             self.logger.error('[Azure] ERROR: Unable to find or access attached volume for instance_id {}.{}'.format(instance_id, error))
             return None
 
-    def get_snapshot(self, snapshot_name):
+    def _get_snapshot(self, snapshot_name):
         try:
             snapshot = self.compute_client.snapshots.get(
                 self.resource_group, snapshot_name)
@@ -124,7 +124,7 @@ class AzureClient(BaseClient):
                     snapshot_name, error))
             return None
 
-    def get_volume(self, volume_name):
+    def _get_volume(self, volume_name):
         try:
             volume = self.compute_client.disks.get(
                 self.resource_group, volume_name)
@@ -283,7 +283,7 @@ class AzureClient(BaseClient):
         return snapshot
 
     def _copy_snapshot(self, snapshot_id):
-        return self.get_snapshot(snapshot_id)
+        return self._get_snapshot(snapshot_id)
 
     def _delete_snapshot(self, snapshot_id):
         log_prefix = '[SNAPSHOT] [DELETE]'
@@ -293,7 +293,7 @@ class AzureClient(BaseClient):
                 self.resource_group, snapshot_id)
             # TODO: can be implemented the following wait as 'operation.done() is True'
             self._wait('Waiting for snapshot {} to be deleted...'.format(snapshot_id),
-                       lambda id: not self.get_snapshot(id),
+                       lambda id: not self._get_snapshot(id),
                        None,
                        snapshot_id)
             snapshot_delete_response = snapshot_deletion_operation.result()

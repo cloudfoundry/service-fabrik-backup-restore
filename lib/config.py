@@ -19,7 +19,8 @@ parameters_credentials = {
         'access_key_id': 'Ali Access Key ID',
         'secret_access_key': 'Ali Secret Access Key',
         'region_name': 'Ali Region Name',
-        'endpoint': 'Ali Endpoint name'
+        'endpoint': 'Ali Endpoint name',
+        'max_retries': 'Max number of retries for SDK ALI client'
     },
     'azure': {
         'subscription_id': 'Azure subscription id',

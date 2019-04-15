@@ -140,7 +140,7 @@ class CR:
         self.version = None
     def set_domain(self, domain):
         self.domain = domain
-        # reset params on each _get_common_request call
+        # reset params on each _get_common_compute_request call
         self.params = {}
     def set_version(self, version):
         self.version = version
@@ -446,7 +446,7 @@ class TestAliClient:
     
     def test_ali_gets_snapshot_successfully(self):
         expected_snapshot = Snapshot(snapshot_id, 20, snapshot_creation_time, 'accomplished')
-        snapshot = self.aliClient.get_snapshot(
+        snapshot = self.aliClient._get_snapshot(
             snapshot_id)
         assert snapshot.id == expected_snapshot.id
         assert snapshot.status == expected_snapshot.status
@@ -455,7 +455,7 @@ class TestAliClient:
     
     def test_ali_get_snapshot_throws_exception_on_error(self):
         try:
-            self.aliClient.get_snapshot(snapshot_delete_id)
+            self.aliClient._get_snapshot(snapshot_delete_id)
         except Exception as error:
             assert 'Snapshot with id {} is not found'.format(snapshot_delete_id) in str(error)
 
@@ -490,16 +490,22 @@ class TestAliClient:
         assert self.aliClient.get_persistent_volume_for_instance(invalid_vm_id) is None
     
     def test_ali_gets_volume_successfully(self):
-        volume = self.aliClient.get_volume(ephemeral_disk_id)
+        volume = self.aliClient._get_volume(ephemeral_disk_id)
         assert volume.id == ephemeral_disk_id
         assert volume.status == 'In_use'
         assert volume.size == int(ephemeral_disk_size)
 
     def test_ali_get_volume_returns_none_on_duplicate(self):
-        assert self.aliClient.get_volume(disk_duplicate_id) is None
+        try:
+            self.aliClient._get_volume(disk_duplicate_id)
+        except Exception as error:
+            assert "More than 1 volumes found for with id duplicatedisk1" in str(error)
     
     def test_ali_get_volume_returns_none_if_notfound(self):
-        assert self.aliClient.get_volume(disk_delete_id) is None
+        try:
+            self.aliClient._get_volume(disk_delete_id)
+        except Exception as error:
+            assert "Volume with id deletedisk1 is not found" in str(error)
 
     def test_ali_is_volume_ready_returns_true(self):
         assert self.aliClient._is_volume_ready(ephemeral_disk_id) is True

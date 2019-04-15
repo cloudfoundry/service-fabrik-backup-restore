@@ -685,32 +685,10 @@ class BaseClient:
         """
         raise NotImplementedError()
 
-    def get_snapshot(self, snapshot_id):
-        """Retrieve a snapshot.
-
-        :param snapshot_id: the snapshot id
-        :returns: the snapshot (in case of success) or None (in case of errors)
-        :rtype: Snapshot object
-
-        :Example:
-            ::
-
-                iaas_client.get_snapshot('ed1258f8-6e80-11e6-8b77-86f30ca893d3')
-        """
+    def _get_snapshot(self, snapshot_id):
         raise NotImplementedError()
 
-    def get_volume(self, volume_id):
-        """Retrieve a volume.
-
-        :param volume_id: the volume id
-        :returns: the volume (in case of success) or None (in case of errors)
-        :rtype: Volume object
-
-        :Example:
-            ::
-
-                iaas_client.get_volume('948fb2e4-6e7f-11e6-8b77-86f30ca893d3')
-        """
+    def _get_volume(self, volume_id):
         raise NotImplementedError()
 
     def get_attached_volumes_for_instance(self, instance_id):
@@ -811,6 +789,34 @@ class BaseClient:
                 iaas_client.create_snapshot('948fb2e4-6e7f-11e6-8b77-86f30ca893d3')
         """
         return self.__retry(self._copy_snapshot, args)
+
+    def get_snapshot(self, *args):    
+        """Retrieve a snapshot.
+        
+        :param snapshot_id: the snapshot id
+        :returns: the snapshot (in case of success) or None (in case of errors)
+        :rtype: Snapshot object
+
+        :Example:
+            ::
+
+                iaas_client.get_snapshot('ed1258f8-6e80-11e6-8b77-86f30ca893d3')
+        """
+        return self.__retry(self._get_snapshot, args)
+
+    def get_volume(self, *args):
+        """Retrieve a volume.
+
+        :param volume_id: the volume id
+        :returns: the volume (in case of success) or None (in case of errors)
+        :rtype: Volume object
+
+        :Example:
+            ::
+
+                iaas_client.get_volume('948fb2e4-6e7f-11e6-8b77-86f30ca893d3')
+        """
+        return self.__retry(self._get_volume, args)
 
     def delete_snapshot(self, *args):
         """Delete a snapshot of a volume.

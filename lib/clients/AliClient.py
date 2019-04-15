@@ -6,6 +6,8 @@ from aliyunsdkcore.client import AcsClient
 from ..models.Snapshot import Snapshot
 from ..models.Volume import Volume
 from ..models.Attachment import Attachment
+from .. import constants
+
 import json
 
 class AliClient(BaseClient):
@@ -21,6 +23,9 @@ class AliClient(BaseClient):
             self.__setCredentials(
                 credentials['access_key_id'], credentials['secret_access_key'], credentials['region_name'])
         self.endpoint = configuration['endpoint']
+        self.max_retries = (configuration.get('max_retries') if
+                            type(configuration.get('max_retries'))
+                            == int else 10)
         # +-> Create compute and storage clients
         self.compute_client = self.create_compute_client()
         self.storage_client = self.create_storage_client()
@@ -33,7 +38,7 @@ class AliClient(BaseClient):
             raise Exception(msg)
         
         # skipping some actions for blob operation
-        if operation_name != 'blob_operation':
+        if operation_name != constants.OPERATIONS['BLOB_OPERATION']:
             # +-> Get the availability zone of the instance
             self.availability_zone = self._get_availability_zone_of_server(
                 configuration['instance_id'])
@@ -53,7 +58,7 @@ class AliClient(BaseClient):
         try:
             credentials = self.__aliCredentials
             compute_client = AcsClient(credentials['access_key_id'], credentials['secret_access_key'], credentials['region_name'], auto_retry=True,
-            max_retry_time=10, timeout=30)
+            max_retry_time=self.max_retries, timeout=30)
             return compute_client
         except Exception as error:
             raise Exception(
@@ -69,10 +74,10 @@ class AliClient(BaseClient):
             raise Exception(
                 'Creation of storage client failed: {}'.format(error))
 
-    def _get_common_request(self, action_name, params, tags=None):
+    def _get_common_compute_request(self, action_name, params, tags=None):
         request = CommonRequest()
-        request.set_domain('ecs.aliyuncs.com')
-        request.set_version('2014-05-26')
+        request.set_domain(constants.APIS['ALI']['DOMAIN'])
+        request.set_version(constants.APIS['ALI']['VERSION'])
         request.set_action_name(action_name)
         i = 1
         if tags != None:
@@ -91,7 +96,7 @@ class AliClient(BaseClient):
             instance_details_req_params = {
                 'InstanceIds' : [instance_id]
             }
-            instance_details_request = self._get_common_request('DescribeInstances', instance_details_req_params)
+            instance_details_request = self._get_common_compute_request('DescribeInstances', instance_details_req_params)
             instance_details = self.compute_client.do_action_with_exception(instance_details_request)
             instance_details_json = json.loads(instance_details.decode('utf-8'))
             if len(instance_details_json['Instances']['Instance']) > 1:
@@ -169,7 +174,7 @@ class AliClient(BaseClient):
             }
             self.logger.info('{} START for volume id {} with tags {} and snapshot name {}'.format(
                 log_prefix, volume_id, self.tags, snapshot_name))
-            snpshot_creation_request = self._get_common_request('CreateSnapshot', snapshot_req_params, self.tags)
+            snpshot_creation_request = self._get_common_compute_request('CreateSnapshot', snapshot_req_params, self.tags)
             snapshot_creation_operation = self.compute_client.do_action_with_exception(snpshot_creation_request)
             snapshot_details_json = json.loads(snapshot_creation_operation.decode('utf-8'))
             snapshot_id = snapshot_details_json['SnapshotId']
@@ -178,7 +183,7 @@ class AliClient(BaseClient):
                        None,
                        snapshot_id)
 
-            snapshot = self._get_snapshot_with_exception(snapshot_id)
+            snapshot = self._get_snapshot(snapshot_id)
             if snapshot.status == 'accomplished':
                 self._add_snapshot(snapshot.id)
                 self.output_json['snapshotId'] = snapshot.id
@@ -206,31 +211,27 @@ class AliClient(BaseClient):
             'RegionId' : region_id,
             'SnapshotIds' : [snapshot_id]
         }
-        get_snapshot_request = self._get_common_request('DescribeSnapshots', get_snapshot_req_params)
+        get_snapshot_request = self._get_common_compute_request('DescribeSnapshots', get_snapshot_req_params)
         snapshot_details = self.compute_client.do_action_with_exception(get_snapshot_request)
         snapshot_details_json = json.loads(snapshot_details.decode('utf-8'))
         return snapshot_details_json['Snapshots']['Snapshot']
     
-    def _get_snapshot_with_exception(self, snapshot_id):
-        snapshot_list = self._get_snapshot_list(snapshot_id)
-        if len(snapshot_list) > 1:
-            message = 'More than 1 snapshot found with id {}'.format(
-            snapshot_id)
-            raise Exception(message)
-        if len(snapshot_list) == 0:
-            message = 'Snapshot with id {} is not found'.format(
-            snapshot_id)
-            raise Exception(message)
-        snapshot = snapshot_list[0]
-        return Snapshot(snapshot['SnapshotId'], snapshot['SourceDiskSize'], snapshot['CreationTime'], snapshot['Status'])
-
-    def get_snapshot(self, snapshot_id):
+    def _get_snapshot(self, snapshot_id):
         try:
-            return self._get_snapshot_with_exception(snapshot_id)
+            snapshot_list = self._get_snapshot_list(snapshot_id)
+            if len(snapshot_list) > 1:
+                message = 'More than 1 snapshot found with id {}'.format(
+                snapshot_id)
+                raise Exception(message)
+            if len(snapshot_list) == 0:
+                message = 'Snapshot with id {} is not found'.format(
+                snapshot_id)
+                raise Exception(message)
+            snapshot = snapshot_list[0]
+            return Snapshot(snapshot['SnapshotId'], snapshot['SourceDiskSize'], snapshot['CreationTime'], snapshot['Status'])
         except Exception as error:
-            self.logger.error('[ALI] ERROR: Error in getting snapshot {}.\n{}'.format(
-                snapshot_id, error))
-            return None
+            message = '[ALI] ERROR: Error in getting snapshot {}.\n{}'.format(snapshot_id, error)
+            raise Exception(message)
     
     def _is_snapshot_ready(self, snapshot_id):
         """Gets the snapshot state.
@@ -239,6 +240,8 @@ class AliClient(BaseClient):
         """
         # Try until snapshot state is either "accomplished" or "failed"
         # Returns True if multiple snapshots with same id are found
+        # snapshot_id is assigned by iaas and we can except it to be unique (Although not mentioned anywhere in api documentation)
+        # Hence handling at our part
         # Retries for failures also
         try:
             snapshot_list = self._get_snapshot_list(snapshot_id)
@@ -250,16 +253,18 @@ class AliClient(BaseClient):
                 '[ALI] ERROR: Unable to get snapshot details for snapshot id {}.\n{}'.format(snapshot_id, error))
             return False
 
-    def _copy_snapshot(self, snapshot_id):
-        return self.get_snapshot(snapshot_id)
-
     def _delete_snapshot(self, snapshot_id):
         log_prefix = '[SNAPSHOT] [DELETE]'
         try:
+            # https://www.alibabacloud.com/help/doc-detail/25525.htm?spm=a2c63.p38356.b99.470.2ecd123fj8j9jB
+            # Force params to delete snapshots which have been used to create some disk
+            # Thing to remember is that disk can't be reinitialised if parent snapshot is deleted
+            
             snapshot_deletion_req_params = {
-                'SnapshotId': snapshot_id
+                'SnapshotId': snapshot_id,
+                'Force': True
             }
-            snpshot_deletion_request = self._get_common_request('DeleteSnapshot', snapshot_deletion_req_params)
+            snpshot_deletion_request = self._get_common_compute_request('DeleteSnapshot', snapshot_deletion_req_params)
             snapshot_deletion_operation = self.compute_client.do_action_with_exception(snpshot_deletion_request)
 
             self._wait('Waiting for snapshot {} to be deleted...'.format(snapshot_id),
@@ -286,7 +291,7 @@ class AliClient(BaseClient):
                 'RegionId' : region_id,
                 'InstanceId' : instance_id
             }
-            get_attached_volume_request = self._get_common_request('DescribeDisks', get_attached_volume_req_params)
+            get_attached_volume_request = self._get_common_compute_request('DescribeDisks', get_attached_volume_req_params)
             volume_details = self.compute_client.do_action_with_exception(get_attached_volume_request)
             volume_details_json = json.loads(volume_details.decode('utf-8'))
             volume_list = []
@@ -345,32 +350,27 @@ class AliClient(BaseClient):
             'RegionId' : region_id,
             'DiskIds' : [volume_id]
         }
-        get_volume_request = self._get_common_request('DescribeDisks', get_volume_req_params)
+        get_volume_request = self._get_common_compute_request('DescribeDisks', get_volume_req_params)
         volume_details = self.compute_client.do_action_with_exception(get_volume_request)
         volume_details_json = json.loads(volume_details.decode('utf-8'))
         return volume_details_json['Disks']['Disk']
 
-    def _get_volume_with_exception(self, volume_id):
-        volume_list = self._get_volume_list(volume_id)
-        if len(volume_list) > 1:
-            message = 'More than 1 volumes found for with id {}'.format(
-            volume_id)
-            raise Exception(message)
-        if len(volume_list) == 0:
-            message = 'Volume with id {} is not found'.format(
-            volume_id)
-            raise Exception(message)
-        volume = volume_list[0]
-        return Volume(volume['DiskId'], volume['Status'], volume['Size'])
-
-    def get_volume(self, volume_id):
+    def _get_volume(self, volume_id):
         try:
-            return self._get_volume_with_exception(volume_id)
+            volume_list = self._get_volume_list(volume_id)
+            if len(volume_list) > 1:
+                message = 'More than 1 volumes found for with id {}'.format(
+                volume_id)
+                raise Exception(message)
+            if len(volume_list) == 0:
+                message = 'Volume with id {} is not found'.format(
+                volume_id)
+                raise Exception(message)
+            volume = volume_list[0]
+            return Volume(volume['DiskId'], volume['Status'], volume['Size'])
         except Exception as error:
-            self.logger.error(
-                '[ALI] ERROR: Unable to find or access volume/disk {}.\n{}'.format(
-                    volume_id, error))
-            return None
+            message = '[ALI] ERROR: Unable to find or access volume/disk {}.\n{}'.format(volume_id, error)
+            raise Exception(message)
 
     def _create_volume(self, size, snapshot_id=None, volume_type = 'cloud_ssd'):
         log_prefix = '[VOLUME] [CREATE]'
@@ -390,7 +390,7 @@ class AliClient(BaseClient):
             if snapshot_id is not None:
                 disk_creation_req_params['SnapshotId'] = snapshot_id
             
-            disk_creation_request = self._get_common_request('CreateDisk', disk_creation_req_params, self.tags)
+            disk_creation_request = self._get_common_compute_request('CreateDisk', disk_creation_req_params, self.tags)
             disk_creation_operation = self.compute_client.do_action_with_exception(disk_creation_request)
             volume_details_json = json.loads(disk_creation_operation.decode('utf-8'))
             disk_id = volume_details_json['DiskId']
@@ -400,7 +400,7 @@ class AliClient(BaseClient):
                        None,
                        disk_id)
 
-            volume = self._get_volume_with_exception(disk_id)
+            volume = self._get_volume(disk_id)
             if volume.status in ('Available', 'In_use'):
                 self._add_volume(volume.id)
                 self.logger.info('{} SUCCESS: volume-id={} with tags={} '.format(
@@ -424,7 +424,7 @@ class AliClient(BaseClient):
             volume_deletion_req_params = {
                 'DiskId': volume_id
             }
-            volume_deletion_request = self._get_common_request('DeleteDisk', volume_deletion_req_params)
+            volume_deletion_request = self._get_common_compute_request('DeleteDisk', volume_deletion_req_params)
             volume_deletion_operation = self.compute_client.do_action_with_exception(volume_deletion_request)
 
             self._wait('Waiting for disk {} to be deleted...'.format(volume_id),
@@ -470,7 +470,7 @@ class AliClient(BaseClient):
                 'InstanceId' : instance_id,
                 'DiskId' : volume_id
             }
-            attachment_request = self._get_common_request('AttachDisk', attachment_req_params)
+            attachment_request = self._get_common_compute_request('AttachDisk', attachment_req_params)
             attachment_creation_operation = self.compute_client.do_action_with_exception(attachment_request)
             
             self._wait('Waiting for volume {} to get ready...'.format(volume_id),
@@ -506,7 +506,7 @@ class AliClient(BaseClient):
             # check whether the volume is attached and if yes, trigger the detachment
             if attachment_creation_operation:
                 if device:
-                    self.logger.warning('[VOLUME] [DELETE] Volume is attached although the attaching process failed, '
+                    self.logger.warning('[ATTACHMENT] [CREATE] Volume is attached although the attaching process failed, '
                                     'triggering detachment')
                 self.delete_attachment(volume_id, instance_id)
             raise Exception(message)
@@ -519,7 +519,7 @@ class AliClient(BaseClient):
                 'InstanceId' : instance_id,
                 'DiskId' : volume_id
             }
-            delete_attachment_request = self._get_common_request('DetachDisk', delete_attachment_req_params)
+            delete_attachment_request = self._get_common_compute_request('DetachDisk', delete_attachment_req_params)
             attachment_deletion_operation = self.compute_client.do_action_with_exception(delete_attachment_request)
             
             self._wait('Waiting for attachment of volume {} to be deleted...'.format(volume_id),
