@@ -548,7 +548,7 @@ class TestGcpClient:
         assert expected_snapshot.status == snapshot.status
 
     def test_get_snapshot_exception(self):
-        pytest.raises(Exception, self.gcpClient.get_snapshot,
+        pytest.raises(Exception, self.gcpClient._get_snapshot,
                       invalid_snapshot_name)
 
     def test_snapshot_exists(self):

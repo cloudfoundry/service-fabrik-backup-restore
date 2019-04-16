@@ -127,7 +127,7 @@ class OpenstackClient(BaseClient):
             return None
 
 
-    def get_snapshot(self, snapshot_id):
+    def _get_snapshot(self, snapshot_id):
         try:
             snapshot = self.cinder.volume_snapshots.get(snapshot_id)
             return Snapshot(snapshot.id, snapshot.size, snapshot.created_at, snapshot.status)
@@ -136,7 +136,7 @@ class OpenstackClient(BaseClient):
             return None
 
 
-    def get_volume(self, volume_id):
+    def _get_volume(self, volume_id):
         try:
             volume = self.cinder.volumes.get(volume_id)
             return Volume(volume.id, volume.status, volume.size)
@@ -180,7 +180,7 @@ class OpenstackClient(BaseClient):
             )
 
             self._wait('Waiting for snapshot {} to get ready...'.format(snapshot.id),
-                       lambda snap: self.get_snapshot(snap.id).status == 'available',
+                       lambda snap: self._get_snapshot(snap.id).status == 'available',
                        None,
                        snapshot)
 
@@ -205,7 +205,7 @@ class OpenstackClient(BaseClient):
             self.cinder.volume_snapshots.delete(snapshot_id)
 
             self._wait('Waiting for snapshot {} to be deleted...'.format(snapshot_id),
-                       lambda id: not self.get_snapshot(id),
+                       lambda id: not self._get_snapshot(id),
                        None,
                        snapshot_id)
 
@@ -238,7 +238,7 @@ class OpenstackClient(BaseClient):
             volume = self.cinder.volumes.create(**kwargs)
 
             self._wait('Waiting for volume {} to get ready...'.format(volume.id),
-                       lambda id: self.get_volume(id).status == 'available',
+                       lambda id: self._get_volume(id).status == 'available',
                        None,
                        volume.id)
 
@@ -263,7 +263,7 @@ class OpenstackClient(BaseClient):
             self.cinder.volumes.delete(volume_id)
 
             self._wait('Waiting for volume {} to be deleted...'.format(volume_id),
-                       lambda id: not self.get_volume(id),
+                       lambda id: not self._get_volume(id),
                        None,
                        volume_id)
 
@@ -288,7 +288,7 @@ class OpenstackClient(BaseClient):
             attachment = self.nova.volumes.create_server_volume(instance_id, volume_id)
 
             self._wait('Waiting for attachment of volume {} to get ready...'.format(volume_id),
-                       lambda id: self.get_volume(id).status == 'in-use',
+                       lambda id: self._get_volume(id).status == 'in-use',
                        None,
                        volume_id)
 
@@ -314,7 +314,7 @@ class OpenstackClient(BaseClient):
             self.nova.volumes.delete_server_volume(instance_id, volume_id)
 
             self._wait('Waiting for attachment of volume {} to be removed...'.format(volume_id),
-                       lambda id: self.get_volume(id).status == 'available',
+                       lambda id: self._get_volume(id).status == 'available',
                        None,
                        volume_id)
 

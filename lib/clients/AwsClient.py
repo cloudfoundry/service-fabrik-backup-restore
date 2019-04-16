@@ -110,14 +110,14 @@ class AwsClient(BaseClient):
                 self.CONTAINER, error))
             return None
 
-    def get_snapshot(self, snapshot_id):
+    def _get_snapshot(self, snapshot_id):
         try:
             snapshot = self.ec2.Snapshot(snapshot_id)
             return Snapshot(snapshot.id, snapshot.volume_size, snapshot.start_time, snapshot.state)
         except:
             return None
 
-    def get_volume(self, volume_id):
+    def _get_volume(self, volume_id):
         try:
             volume = self.ec2.Volume(volume_id)
             return Volume(volume.id, volume.state, volume.size)
@@ -238,7 +238,7 @@ class AwsClient(BaseClient):
             )
 
             self._wait('Waiting for snapshot {} to be deleted...'.format(snapshot_id),
-                       lambda id: not self.get_snapshot(id),
+                       lambda id: not self._get_snapshot(id),
                        None,
                        snapshot_id)
 
@@ -303,7 +303,7 @@ class AwsClient(BaseClient):
             )
 
             self._wait('Waiting for volume {} to be deleted...'.format(volume_id),
-                       lambda id: not self.get_volume(id),
+                       lambda id: not self._get_volume(id),
                        None,
                        volume_id)
 
@@ -354,7 +354,7 @@ class AwsClient(BaseClient):
             # The attachment process (see _create_attachment() method) may end with throwing an Exception, e.g.
             # 'list index out of range', but the attachment has been successful. Therefore, we must
             # check whether the volume is attached and if yes, trigger the detachment
-            volume = self.get_volume(volume_id)
+            volume = self._get_volume(volume_id)
             if volume.status == 'in-use':
                 self.logger.warning('[VOLUME] [DELETE] Volume is in state {} although the attaching process failed, '
                                     'triggering detachment'.format(volume.status))
