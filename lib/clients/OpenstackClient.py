@@ -336,7 +336,7 @@ class OpenstackClient(BaseClient):
         self.shell('udevadm trigger', False)
         # create symbol links at /dev/disk/by-id/virtio-<uuid> pointing to the real device name
         time.sleep(3)
-        result = self.shell('ls /dev/disk/by-id/ | grep {}'.format(volume_id[:20]), False)
+        result = self.shell('ls /dev/disk/by-id/ | egrep {}'.format(volume_id[:20].replace('-', '-?')), False)
         if result:
             result = '/dev/disk/by-id/{}'.format(result.split('\n')[0])
         return result
