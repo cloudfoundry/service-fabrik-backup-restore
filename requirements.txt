@@ -15,4 +15,4 @@ iso8601==0.1.12
 pytz==2018.5
 oss2==2.6.1
 aliyun-python-sdk-core-v3==2.13.0
-aliyun-python-sdk-ecs==4.13.1
+aliyun-python-sdk-ecs==4.16.1
