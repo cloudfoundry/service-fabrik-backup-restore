@@ -247,6 +247,10 @@ class AwsClient(BaseClient):
                 '{} SUCCESS: snapshot-id={}'.format(log_prefix, snapshot_id))
             return True
         except Exception as error:
+            if error.response['ResponseMetadata']['HTTPStatusCode'] == 404:
+                message = '{} NOT FOUND: volume-id={}\n{}\nIgnoring NOT FOUND error, moving to next step...'.format(log_prefix, volume_id, error)
+                self.logger.info(message)
+                return True
             message = '{} ERROR: snapshot-id={}\n{}'.format(
                 log_prefix, snapshot_id, error)
             self.logger.error(message)
@@ -312,6 +316,10 @@ class AwsClient(BaseClient):
                 '{} SUCCESS: volume-id={}'.format(log_prefix, volume_id))
             return True
         except Exception as error:
+            if error.response['ResponseMetadata']['HTTPStatusCode'] == 404:
+                message = '{} NOT FOUND: volume-id={}\n{}\nIgnoring NOT FOUND error, moving to next step...'.format(log_prefix, volume_id, error)
+                self.logger.info(message)
+                return True
             message = '{} ERROR: volume-id={}\n{}'.format(
                 log_prefix, volume_id, error)
             self.logger.error(message)
@@ -388,6 +396,10 @@ class AwsClient(BaseClient):
                 '{} SUCCESS: volume-id={}, instance-id={}'.format(log_prefix, volume_id, instance_id))
             return True
         except Exception as error:
+            if error.response['ResponseMetadata']['HTTPStatusCode'] == 404:
+                message = '{} NOT FOUND: volume-id={}\n{}\nIgnoring NOT FOUND error, moving to next step...'.format(log_prefix, volume_id, error)
+                self.logger.info(message)
+                return True
             message = '{} ERROR: volume-id={}, instance-id={}\n{}'.format(
                 log_prefix, volume_id, instance_id, error)
             self.logger.error(message)
