@@ -79,9 +79,9 @@ class BaseClient:
         self.__devices = {}
 
     def _get_credentials_from_credhub(self, *args):
-        access_token = self.__retry(self.__getAccessToken, args)
+        access_token = self._retry(self.__getAccessToken, args)
         params = [args[0], access_token]
-        return self.__retry(self.__get_credentials_from_credhub, params)
+        return self._retry(self.__get_credentials_from_credhub, params)
     
     def __get_credentials_from_credhub(self, configuration, access_token):
         params = {'name': configuration['credhub_key'],
@@ -150,7 +150,7 @@ class BaseClient:
         else:
             return method
 
-    def __retry(self, function, args, throw_exception=None):
+    def _retry(self, function, args, throw_exception=None):
         try:
             return self.__retry_rescuer(function, args)
         except Exception as error:
@@ -774,7 +774,7 @@ class BaseClient:
 
                 iaas_client.create_snapshot('948fb2e4-6e7f-11e6-8b77-86f30ca893d3')
         """
-        return self.__retry(self._create_snapshot, args)
+        return self._retry(self._create_snapshot, args)
 
     def copy_snapshot(self, *args):
         """Create a copy of snapshot of a volume.
@@ -788,7 +788,7 @@ class BaseClient:
 
                 iaas_client.create_snapshot('948fb2e4-6e7f-11e6-8b77-86f30ca893d3')
         """
-        return self.__retry(self._copy_snapshot, args)
+        return self._retry(self._copy_snapshot, args)
 
     def get_snapshot(self, *args):    
         """Retrieve a snapshot.
@@ -802,7 +802,7 @@ class BaseClient:
 
                 iaas_client.get_snapshot('ed1258f8-6e80-11e6-8b77-86f30ca893d3')
         """
-        return self.__retry(self._get_snapshot, args)
+        return self._retry(self._get_snapshot, args)
 
     def get_volume(self, *args):
         """Retrieve a volume.
@@ -816,7 +816,7 @@ class BaseClient:
 
                 iaas_client.get_volume('948fb2e4-6e7f-11e6-8b77-86f30ca893d3')
         """
-        return self.__retry(self._get_volume, args)
+        return self._retry(self._get_volume, args)
 
     def delete_snapshot(self, *args):
         """Delete a snapshot of a volume.
@@ -828,7 +828,7 @@ class BaseClient:
 
                 iaas_client.delete_snapshot('ed1258f8-6e80-11e6-8b77-86f30ca893d3')
         """
-        return self.__retry(self._delete_snapshot, args)
+        return self._retry(self._delete_snapshot, args)
 
     def create_volume(self, *args):
         """Create a volume.
@@ -844,7 +844,7 @@ class BaseClient:
                 iaas_client.create_volume('1')
                 iaas_client.create_volume('1', 'ed1258f8-6e80-11e6-8b77-86f30ca893d3')
         """
-        return self.__retry(self._create_volume, args)
+        return self._retry(self._create_volume, args)
 
     def delete_volume(self, *args):
         """Delete a volume (must be detached from all instances!).
@@ -856,7 +856,7 @@ class BaseClient:
 
                 iaas_client.delete_volume('948fb2e4-6e7f-11e6-8b77-86f30ca893d3')
         """
-        return self.__retry(self._delete_volume, args)
+        return self._retry(self._delete_volume, args)
 
     def create_attachment(self, *args):
         """Attach a volume to an instance.
@@ -871,7 +871,7 @@ class BaseClient:
 
                 iaas_client.create_attachment('948fb2e4-6e7f-11e6-8b77-86f30ca893d3', '254989f8-6e81-11e6-8b77-86f30ca893d3')
         """
-        return self.__retry(self._create_attachment, args)
+        return self._retry(self._create_attachment, args)
 
     def delete_attachment(self, *args):
         """Detach a volume from an instance.
@@ -884,7 +884,7 @@ class BaseClient:
 
                 iaas_client.delete_attachment('948fb2e4-6e7f-11e6-8b77-86f30ca893d3', '254989f8-6e81-11e6-8b77-86f30ca893d3')
         """
-        return self.__retry(self._delete_attachment, args)
+        return self._retry(self._delete_attachment, args)
 
     def upload_to_blobstore(self, *args, throw_exception=None):
         """Upload a file to the BLOB storage.
@@ -900,7 +900,7 @@ class BaseClient:
 
                 iaas_client.upload_to_blobstore('/tmp/backup/files.tar.gz', 'files.tar.gz', True)
         """
-        return self.__retry(self._upload_to_blobstore, args, throw_exception)
+        return self._retry(self._upload_to_blobstore, args, throw_exception)
 
     def download_from_blobstore(self, *args, throw_exception=None):
         """Download a file from the BLOB storage.
@@ -916,7 +916,7 @@ class BaseClient:
 
                 iaas_client.download_from_blobstore('files.tar.gz', '/tmp/restore/files.tar.gz', True)
         """
-        return self.__retry(self._download_from_blobstore, args, throw_exception)
+        return self._retry(self._download_from_blobstore, args, throw_exception)
 
     def download_from_blobstore_decrypt_extract(self, blob_to_download_name, blob_download_target_path):
         """Download a file from BLOB storage and pipe it to a subprocess for decryption and decompression.
@@ -937,14 +937,14 @@ class BaseClient:
         command = 'gpg --batch --cipher-algo aes256 --passphrase {} --decrypt | tar -xzf - -C {}/'.format(
             self.SECRET, blob_download_target_path)
 
-        if self.__retry(self.get_container, []):
+        if self._retry(self.get_container, []):
             try:
                 self.logger.info('{} Started to download, decryt, extract and copy backup to {}.'.format(
                     log_prefix, blob_download_target_path))
                 process = subprocess.Popen(
                     command, stdin=subprocess.PIPE, shell=True, bufsize=segment_size, universal_newlines=False)
                 args = [process, blob_to_download_name, segment_size]
-                self.__retry(
+                self._retry(
                     self._download_from_blobstore_and_pipe_to_process, args)
                 process.stdin.close()
                 exitcode = process.wait(timeout=None)
