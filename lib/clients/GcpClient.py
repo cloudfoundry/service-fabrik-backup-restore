@@ -35,7 +35,7 @@ class GcpClient(BaseClient):
         self.storage_client = self.create_storage_client()
 
         # +-> Check whether the given container exists and is accessible
-        self.container = self._retry(self.get_container)
+        self.container = self._retry(self.get_container, [], True)
         if not self.container:
             msg = 'Could not find or access the given container.'
             self.last_operation(msg, 'failed')
