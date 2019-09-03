@@ -293,6 +293,7 @@ class GcpClient(BaseClient):
                 log_prefix, snapshot_id, error)
             if self.get_http_error_code(error) == 404:
                 self.logger.info(message)
+                self.logger.info('ignoring this error for delete operation..')
                 return True
             self.logger.error(message)
             raise Exception(message)
@@ -376,6 +377,7 @@ class GcpClient(BaseClient):
                 log_prefix, volume_id, error)
             if self.get_http_error_code(error) == 404:
                 self.logger.info(message)
+                self.logger.info('ignoring this error for delete operation..')
                 return True
             self.logger.error(message)
             raise Exception(message)
@@ -463,6 +465,7 @@ class GcpClient(BaseClient):
                 log_prefix, volume_id, instance_id, error)
             if self.get_http_error_code(error) == 404:
                 self.logger.info(message)
+                self.logger.info('ignoring this error for delete operation..')
                 return True
             self.logger.error(message)
             raise Exception(message)
