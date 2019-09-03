@@ -111,7 +111,7 @@ class GcpClient(BaseClient):
         except Exception as error:
             self.logger.error('[GCP] [STORAGE] ERROR: Unable to find or access container {}.\n{}'.format(
                 self.CONTAINER, error))
-            return None
+            raise Exception('Getting container failed: {}'.format(error))
 
     def _get_snapshot(self, snapshot_name):
         try:

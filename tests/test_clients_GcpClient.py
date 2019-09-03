@@ -536,7 +536,7 @@ class TestGcpClient:
 
     def test_get_container_exception(self):
         self.gcpClient.CONTAINER = invalid_container
-        assert self.gcpClient.get_container() is None
+        pytest.raises(Exception, self.gcpClient.get_container)
         self.gcpClient.CONTAINER = valid_container
 
     def test_get_snapshot(self):
