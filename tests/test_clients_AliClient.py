@@ -66,9 +66,11 @@ disk_detach_id = 'detachdisk1'
 disk_duplicate_id = 'duplicatedisk1'
 disk_create_duplicate_id = 'disk_create_duplicate_id'
 disk_exc_id = 'disk_exc_id'
+disk_404_id = 'disk_404_id'
 disk_attach_error_id = 'disk_attach_error_id'
 
 invalid_vm_id = 'invalid-vm-id'
+notfound_vm_id = 'notfound-vm-id'
 
 directory_persistent = '/var/vcap/store'
 directory_work_list = '/tmp'
@@ -245,8 +247,10 @@ class ComputeClient:
                 response = '{"DiskId": "'+disk_create_duplicate_id+'"}'
             return response.encode('utf-8')
         elif action == 'DeleteDisk':
-            assert params['DiskId'] in (disk_delete_id, disk_create_duplicate_id, disk_exc_id)
+            assert params['DiskId'] in (disk_delete_id, disk_create_duplicate_id, disk_exc_id, disk_404_id)
             if params['DiskId'] == disk_exc_id:
+                raise ServerException('SDK.InvalidRequest','Failed to delete disk', 500)
+            elif params['DiskId'] == disk_404_id:
                 raise ServerException('SDK.InvalidRequest','Failed to delete disk', 404)
             return
         elif action == 'AttachDisk':
@@ -256,9 +260,11 @@ class ComputeClient:
                 raise Exception('Failed to create attachment')
             return
         elif action == 'DetachDisk':
-            assert params['InstanceId'] in (valid_vm_id, invalid_vm_id)
+            assert params['InstanceId'] in (valid_vm_id, invalid_vm_id, notfound_vm_id)
             assert params['DiskId'] in (disk_detach_id,disk_attach_error_id)
             if params['InstanceId'] == invalid_vm_id:
+                raise ServerException('SDK.InvalidRequest','Failed to delete attachment', 500)
+            elif params['InstanceId'] == notfound_vm_id:
                 raise ServerException('SDK.InvalidRequest','Failed to delete attachment', 404)
             return
 
@@ -556,6 +562,13 @@ class TestAliClient:
         except Exception as error:
             assert "Failed to delete disk" in str(error)
 
+    def test_ali_delete_volume_throws_404_exception_on_error(self):
+        try:
+            deleted = self.aliClient._delete_volume(disk_404_id)
+            assert deleted
+        except Exception as error:
+            assert False #error should not be raised
+
     def test_ali_find_volume_device_returns_none_on_error(self):
         assert self.aliClient._find_volume_device(disk_exc_id) is None
 
@@ -592,7 +605,14 @@ class TestAliClient:
         try:
             self.aliClient._delete_attachment(disk_detach_id, invalid_vm_id)
         except Exception as error:
-            assert "Failed to detach" in str(error)
+            assert "Failed to delete attachment" in str(error)
+
+    def test_ali_delete_attachment_throws_404_exception_on_error(self):
+        try:
+            deleted = self.aliClient._delete_attachment(disk_detach_id, notfound_vm_id)
+            assert deleted
+        except Exception as error:
+            assert False
 
     def test_ali_gets_mounpoint_successfully(self):
         assert self.aliClient.get_mountpoint(persistent_disk_id) == persistent_disk_mount_device_id

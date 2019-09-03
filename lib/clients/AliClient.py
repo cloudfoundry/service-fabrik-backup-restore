@@ -547,8 +547,6 @@ class AliClient(BaseClient):
                 self.logger.info(message)
                 self.logger.info('ignoring this error for delete operation..')
                 return True
-            message = '{} ERROR: volume-id={}, instance-id={}\n{}'.format(
-                log_prefix, volume_id, instance_id, error)
             self.logger.error(message)
             raise Exception(message)
 
