@@ -303,12 +303,11 @@ class AzureClient(BaseClient):
                     log_prefix, snapshot_id, snapshot_delete_response))
             return True
         except Exception as error:
+            message = '{} ERROR: snapshot_id={}\n{}'.format(
+                log_prefix, snapshot_id, error)
             if error.status_code == 404:
-                message = '{} NOT FOUND: volume-id={}\n{}\nIgnoring NOT FOUND error, moving to next step...'.format(log_prefix, volume_id, error)
                 self.logger.info(message)
                 return True
-            message = '{} ERROR: snapshot-id={}\n{}'.format(
-                log_prefix, snapshot_id, error)
             self.logger.error(message)
             raise Exception(message)
 
@@ -391,12 +390,11 @@ class AzureClient(BaseClient):
                     log_prefix, volume_id, self.tags, delete_response))
             return True
         except Exception as error:
-            if error.status_code == 404:
-                message = '{} NOT FOUND: volume-id={}\n{}\nIgnoring NOT FOUND error, moving to next step...'.format(log_prefix, volume_id, error)
-                self.logger.info(message)
-                return True
             message = '{} ERROR: volume-id={}\n{}'.format(
                 log_prefix, volume_id, error)
+            if error.status_code == 404:
+                self.logger.info(message)
+                return True
             self.logger.error(message)
             raise Exception(message)
 
@@ -511,12 +509,11 @@ class AzureClient(BaseClient):
                     log_prefix, volume_id, instance_id, updated_vm))
             return True
         except Exception as error:
-            if error.status_code == 404:
-                message = '{} NOT FOUND: volume-id={}\n{}\nIgnoring NOT FOUND error, moving to next step...'.format(log_prefix, volume_id, error)
-                self.logger.info(message)
-                return True
             message = '{} ERROR: volume-id={}, instance-id={}\n{}'.format(
                 log_prefix, volume_id, instance_id, error)
+            if error.status_code == 404:
+                self.logger.info(message)
+                return True
             self.logger.error(message)
             raise Exception(message)
 

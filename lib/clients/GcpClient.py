@@ -289,12 +289,11 @@ class GcpClient(BaseClient):
                 self.logger.error(message)
                 raise Exception(message)
         except Exception as error:
-            if self.get_http_error_code(error) == 404:
-                message = '{} NOT FOUND: volume-id={}\n{}\nIgnoring NOT FOUND error, moving to next step...'.format(log_prefix, volume_id, error)
-                self.logger.info(message)
-                return True
             message = '{} ERROR: snapshot-id={}\n{}'.format(
                 log_prefix, snapshot_id, error)
+            if self.get_http_error_code(error) == 404:
+                self.logger.info(message)
+                return True
             self.logger.error(message)
             raise Exception(message)
 
@@ -373,12 +372,11 @@ class GcpClient(BaseClient):
                 self.logger.error(message)
                 raise Exception(message)
         except Exception as error:
-            if self.get_http_error_code(error) == 404:
-                message = '{} NOT FOUND: volume-id={}\n{}\nIgnoring NOT FOUND error, moving to next step...'.format(log_prefix, volume_id, error)
-                self.logger.info(message)
-                return True
             message = '{} ERROR: volume-id={}\n{}'.format(
                 log_prefix, volume_id, error)
+            if self.get_http_error_code(error) == 404:
+                self.logger.info(message)
+                return True
             self.logger.error(message)
             raise Exception(message)
 
@@ -461,12 +459,11 @@ class GcpClient(BaseClient):
                 '{} SUCCESS: volume-id={}, instance-id={}'.format(log_prefix, volume_id, instance_id))
             return True
         except Exception as error:
-            if self.get_http_error_code(error) == 404:
-                message = '{} NOT FOUND: volume-id={}\n{}\nIgnoring NOT FOUND error, moving to next step...'.format(log_prefix, volume_id, error)
-                self.logger.info(message)
-                return True
             message = '{} ERROR: volume-id={}, instance-id={}\n{}'.format(
                 log_prefix, volume_id, instance_id, error)
+            if self.get_http_error_code(error) == 404:
+                self.logger.info(message)
+                return True
             self.logger.error(message)
             raise Exception(message)
 

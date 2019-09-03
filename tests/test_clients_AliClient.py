@@ -1,6 +1,7 @@
 from tests.utils.utilities import create_start_patcher, stop_all_patchers
 
 from lib.clients.AliClient import AliClient
+from aliyunsdkcore.acs_exception.exceptions import ServerException
 from lib.clients.BaseClient import BaseClient
 from lib.models.Snapshot import Snapshot
 from lib.models.Volume import Volume
@@ -194,7 +195,7 @@ class ComputeClient:
         elif action == 'DeleteSnapshot':
             assert params['SnapshotId'] in (snapshot_id, snapshot_delete_id, snapshot_failed_id, snapshot_duplicate_id, snapshot_exc_id)
             if params['SnapshotId'] == snapshot_exc_id:
-                raise Exception('Failed to delete snapshot')
+                raise ServerException('SDK.InvalidRequest','Failed to delete snapshot', 404)
             return
         elif action == 'DescribeDisks':
             assert params['PageSize'] == 10
@@ -243,7 +244,7 @@ class ComputeClient:
         elif action == 'DeleteDisk':
             assert params['DiskId'] in (disk_delete_id, disk_create_duplicate_id, disk_exc_id)
             if params['DiskId'] == disk_exc_id:
-                raise Exception('Failed to delete disk')
+                raise ServerException('SDK.InvalidRequest','Failed to delete disk', 404)
             return
         elif action == 'AttachDisk':
             assert params['InstanceId'] in (valid_vm_id, invalid_vm_id)
@@ -255,7 +256,7 @@ class ComputeClient:
             assert params['InstanceId'] in (valid_vm_id, invalid_vm_id)
             assert params['DiskId'] in (disk_detach_id,disk_attach_error_id)
             if params['InstanceId'] == invalid_vm_id:
-                raise Exception('Failed to detach')
+                raise ServerException('SDK.InvalidRequest','Failed to delete attachment', 404)
             return
 
         return response
