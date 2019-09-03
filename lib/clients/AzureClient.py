@@ -303,8 +303,12 @@ class AzureClient(BaseClient):
                     log_prefix, snapshot_id, snapshot_delete_response))
             return True
         except Exception as error:
-            message = '{} ERROR: snapshot-id={}\n{}'.format(
+            message = '{} ERROR: snapshot_id={}\n{}'.format(
                 log_prefix, snapshot_id, error)
+            if error.status_code == 404:
+                self.logger.info(message)
+                self.logger.info('ignoring this error for delete operation..')
+                return True
             self.logger.error(message)
             raise Exception(message)
 
@@ -389,6 +393,10 @@ class AzureClient(BaseClient):
         except Exception as error:
             message = '{} ERROR: volume-id={}\n{}'.format(
                 log_prefix, volume_id, error)
+            if error.status_code == 404:
+                self.logger.info(message)
+                self.logger.info('ignoring this error for delete operation..')
+                return True
             self.logger.error(message)
             raise Exception(message)
 
@@ -505,6 +513,10 @@ class AzureClient(BaseClient):
         except Exception as error:
             message = '{} ERROR: volume-id={}, instance-id={}\n{}'.format(
                 log_prefix, volume_id, instance_id, error)
+            if error.status_code == 404:
+                self.logger.info(message)
+                self.logger.info('ignoring this error for delete operation..')
+                return True
             self.logger.error(message)
             raise Exception(message)
 

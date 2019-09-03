@@ -280,6 +280,10 @@ class AliClient(BaseClient):
         except Exception as error:
             message = '{} ERROR: snapshot-id={}\n{}'.format(
                 log_prefix, snapshot_id, error)
+            if error.get_http_status() == 404:
+                self.logger.info(message)
+                self.logger.info('ignoring this error for delete operation..')
+                return True
             self.logger.error(message)
             raise Exception(message)
 
@@ -439,6 +443,10 @@ class AliClient(BaseClient):
         except Exception as error:
             message = '{} ERROR: volume-id={}\n{}'.format(
                 log_prefix, volume_id, error)
+            if error.get_http_status() == 404:
+                self.logger.info(message)
+                self.logger.info('ignoring this error for delete operation..')
+                return True
             self.logger.error(message)
             raise Exception(message)
 
@@ -535,6 +543,10 @@ class AliClient(BaseClient):
         except Exception as error:
             message = '{} ERROR: volume-id={}, instance-id={}\n{}'.format(
                 log_prefix, volume_id, instance_id, error)
+            if error.get_http_status() == 404:
+                self.logger.info(message)
+                self.logger.info('ignoring this error for delete operation..')
+                return True
             self.logger.error(message)
             raise Exception(message)
 
