@@ -44,6 +44,7 @@ invalid_blob_path = '/tmp/invalid-blob.txt'
 
 
 snapshot_id = 'snapshot-id'
+snapshot_404_id = 'snapshot_404_id'
 snapshot_exc_id = 'snapshot_exc_id'
 snapshot_delete_id = 'snapshot-delete-id'
 snapshot_failed_id = 'snapshot_failed_id'
@@ -193,8 +194,10 @@ class ComputeClient:
                     +snapshot_id+'", "SourceDiskSize": '+source_disk_size+', "CreationTime": "'+snapshot_creation_time+'", "Status":"accomplished"}]}}'
             return response.encode('utf-8')
         elif action == 'DeleteSnapshot':
-            assert params['SnapshotId'] in (snapshot_id, snapshot_delete_id, snapshot_failed_id, snapshot_duplicate_id, snapshot_exc_id)
+            assert params['SnapshotId'] in (snapshot_id, snapshot_delete_id, snapshot_failed_id, snapshot_duplicate_id, snapshot_exc_id, snapshot_404_id)
             if params['SnapshotId'] == snapshot_exc_id:
+                raise ServerException('SDK.InvalidRequest','Failed to delete snapshot', 500)
+            elif params['SnapshotId'] == snapshot_404_id:
                 raise ServerException('SDK.InvalidRequest','Failed to delete snapshot', 404)
             return
         elif action == 'DescribeDisks':
@@ -439,9 +442,17 @@ class TestAliClient:
             snapshot_delete_id)
         assert deleted == True
     
+    def test_ali_delete_snapshot_throws_404_exception_on_error(self):
+        try:
+            deleted = self.aliClient._delete_snapshot(snapshot_404_id)
+            assert deleted
+        except Exception as error:
+            assert False #error should not be raised
+
     def test_ali_delete_snapshot_throws_exception_on_error(self):
         try:
             self.aliClient._delete_snapshot(snapshot_exc_id)
+            assert False #error should be raised
         except Exception as error:
             assert "Failed to delete snapshot" in str(error)
     

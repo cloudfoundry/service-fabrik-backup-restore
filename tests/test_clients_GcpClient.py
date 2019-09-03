@@ -213,6 +213,19 @@ class ComputeClient:
                     method=method,
                     headers={}
                 )
+            elif snapshot == not_found_snapshot_name:
+                http = HttpMock(
+                    'tests/data/gcp/snapshots.get.notfound.json', {'status': '404'})
+                model = JsonModel()
+                uri = 'some_uri'
+                method = 'GET'
+                return HttpRequest(
+                    http,
+                    model.response,
+                    uri,
+                    method=method,
+                    headers={}
+                )
 
     class disks:
         def get(self, project, zone, disk):
@@ -302,6 +315,19 @@ class ComputeClient:
                 model = JsonModel()
                 uri = 'some_uri'
                 method = 'DELETE'
+                return HttpRequest(
+                    http,
+                    model.response,
+                    uri,
+                    method=method,
+                    headers={}
+                )
+            elif disk == not_found_disk_name:
+                http = HttpMock(
+                    'tests/data/gcp/disks.get.notfound.json', {'status': '404'})
+                model = JsonModel()
+                uri = 'some_uri'
+                method = 'GET'
                 return HttpRequest(
                     http,
                     model.response,
@@ -633,6 +659,9 @@ class TestGcpClient:
         pytest.raises(Exception, self.gcpClient._delete_snapshot,
                       valid_snapshot_name)
 
+    def test_delete_snapshot_404_exception(self):
+        assert self.gcpClient._delete_snapshot(not_found_snapshot_name) == True
+
     def test_get_mountpoint_returns_none(self):
         assert self.gcpClient.get_mountpoint(invalid_disk_name, "1") is None
 
@@ -683,6 +712,9 @@ class TestGcpClient:
     def test_delete_volume_exception(self):
         pytest.raises(Exception, self.gcpClient._delete_volume,
                       valid_disk_name)
+
+    def test_delete_volume_404_exception(self):
+        assert self.gcpClient._delete_volume(not_found_disk_name) == True
 
     def test_create_attachment(self):
         attachment = self.gcpClient._create_attachment(
