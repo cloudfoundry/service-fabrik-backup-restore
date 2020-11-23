@@ -145,9 +145,6 @@ class AwsClient(BaseClient):
     def get_persistent_volume_for_instance(self, instance_id):
         if self.has_nvme_persistent_volume() == True:
             device = self.shell('cat /proc/mounts | grep {}'.format(self.DIRECTORY_PERSISTENT)).split(' ')[0][:14]
-            # http://docs.aws.amazon.com/AWSEC2/latest/UserGuide/device_naming.html
-            # --> /dev/xvdk on machine will be /dev/sdk on AWS
-            #device = device.replace('xv', 's')
             vol_id = self.shell("nvme id-ctrl -v {} | egrep -wo 'vol.*'".format(device))
             vol_id = "vol-" + vol_id.split("vol")[1]
             vol_id = vol_id.rstrip("\n")
