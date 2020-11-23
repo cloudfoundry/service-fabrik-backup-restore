@@ -133,19 +133,40 @@ class AwsClient(BaseClient):
         except:
             return []
 
-    def get_persistent_volume_for_instance(self, instance_id):
+    def has_nvme_persistent_volume(self):
         device = self.shell(
-            'cat /proc/mounts | grep {}'.format(self.DIRECTORY_PERSISTENT)).split(' ')[0][:9]
-        # http://docs.aws.amazon.com/AWSEC2/latest/UserGuide/device_naming.html
-        # --> /dev/xvdk on machine will be /dev/sdk on AWS
-        device = device.replace('xv', 's')
+            'cat /proc/mounts | grep {}'.format(self.DIRECTORY_PERSISTENT))
+        nvme_dev_pattern = '/dev/nvme'
+        if nvme_dev_pattern in device:
+            return True
+        else:
+            return False    
 
-        for volume in self.get_attached_volumes_for_instance(instance_id):
-            if volume.device == device:
-                self._add_volume_device(volume.id, device)
-                return volume
+    def get_persistent_volume_for_instance(self, instance_id):
+        if self.has_nvme_persistent_volume() == True:
+            device = self.shell('cat /proc/mounts | grep {}'.format(self.DIRECTORY_PERSISTENT)).split(' ')[0][:14]
+            vol_id = self.shell("nvme id-ctrl -v {} | egrep -wo 'vol.*'".format(device))
+            vol_id = "vol-" + vol_id.split("vol")[1]
+            vol_id = vol_id.rstrip("\n")
+            self.logger.info('Found volume id {} for device {}'.format(vol_id, device))
+            for volume in self.get_attached_volumes_for_instance(instance_id):
+                if volume.id == vol_id:
+                    self._add_volume_device(volume.id, device)
+                    return volume
+            return None
+        else:
+            device = self.shell(
+                'cat /proc/mounts | grep {}'.format(self.DIRECTORY_PERSISTENT)).split(' ')[0][:9]
+            # http://docs.aws.amazon.com/AWSEC2/latest/UserGuide/device_naming.html
+            # --> /dev/xvdk on machine will be /dev/sdk on AWS
+            device = device.replace('xv', 's')
 
-        return None
+            for volume in self.get_attached_volumes_for_instance(instance_id):
+                if volume.device == device:
+                    self._add_volume_device(volume.id, device)
+                    return volume
+
+            return None
 
     def _create_snapshot(self, volume_id, description='Service-Fabrik: Automated backup'):
         log_prefix = '[SNAPSHOT] [CREATE]'
@@ -409,7 +430,22 @@ class AwsClient(BaseClient):
         # Nothing to do for AWS as the device name is specified manually while attaching a volume and therefore known
         pass
 
+    def get_nvme_mountpoint(self, volume_id):
+        device_list = self.shell("lsblk --noheadings --raw -p -o NAME,TYPE | awk '$2 == \"part\" {print $1}'")
+        device_list = device_list.split("\n")
+        for device in device_list:
+            vol_id = self.shell("nvme id-ctrl -v {} | egrep -wo 'vol.*'".format(device))
+            vol_id = "vol-" + vol_id.split("vol")[1]
+            vol_id = vol_id.rstrip("\n")
+            if vol_id == volume_id:
+                return device
+        
+        return None
+        
     def get_mountpoint(self, volume_id, partition=None):
+        if self.has_nvme_persistent_volume() == True:
+            return self.get_nvme_mountpoint(volume_id)
+            
         device = self._get_device_of_volume(volume_id)
         if not device:
             return None
