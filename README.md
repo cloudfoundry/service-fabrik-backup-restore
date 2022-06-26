@@ -1,4 +1,4 @@
-[![Coverage Status](https://coveralls.io/repos/github/cloudfoundry-incubator/service-fabrik-backup-restore/badge.svg?branch=master)](https://coveralls.io/github/cloudfoundry-incubator/service-fabrik-backup-restore?branch=master) [![Travis Build Status](https://travis-ci.org/cloudfoundry-incubator/service-fabrik-backup-restore.svg?branch=master)](https://travis-ci.org/cloudfoundry-incubator/service-fabrik-backup-restore.svg?branch=master)
+[![Coverage Status](https://coveralls.io/repos/github/cloudfoundry/service-fabrik-backup-restore/badge.svg?branch=master)](https://coveralls.io/github/cloudfoundry/service-fabrik-backup-restore?branch=master) [![Travis Build Status](https://travis-ci.org/cloudfoundry/service-fabrik-backup-restore.svg?branch=master)](https://travis-ci.org/cloudfoundry/service-fabrik-backup-restore.svg?branch=master)
 # Backup & Restore Python Library for CF Services managed by the Service Fabrik 
 
 ## Overview
@@ -31,12 +31,12 @@ Assuming, your working directory is ~/workspace/my_service:
 Most likely your working directory is already a git repository so that you may want to add this repository as submodule:
 ```
 $ cd ~/workspace/my_service
-$ git submodule add https://github.com/SAP/service-fabrik-backup-restore.git service_fabrik_backup_restore
+$ git submodule add https://github.com/cloudfoundry/service-fabrik-backup-restore.git service_fabrik_backup_restore
 ```
 Otherwise, just clone this repository (assuming your working directory is ~/workspace/my_service:
 ```
 $ cd ~/workspace/my_service
-$ git clone https://github.com/SAP/service-fabrik-backup-restore.git service_fabrik_backup_restore
+$ git clone https://github.com/cloudfoundry/service-fabrik-backup-restore.git service_fabrik_backup_restore
 ```
 
 ### INSTALL THE DEPENDENCIES
@@ -147,7 +147,7 @@ python3 test_br.py                     \
 
 ## How to obtain support
  
-If you need any support, have any question or have found a bug, please report it in the [GitHub bug tracking system](https://github.com/sap/service-fabrik-backup-restore/issues). We shall get back to you.
+If you need any support, have any question or have found a bug, please report it in the [GitHub bug tracking system](https://github.com/cloudfoundry/service-fabrik-backup-restore/issues). We shall get back to you.
 
 ## LICENSE
 
