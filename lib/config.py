@@ -60,7 +60,8 @@ parameters_backup = {
     'instance_id': 'the ID of the AWS/OpenStack instance to be backed up',
     'secret': 'the password used for the encryption of the backup set',
     'container': 'a container in the object storage in which the backup set can be stored',
-    'job_name': 'the name of the service job under which it is registered to monit'
+    'job_name': 'the name of the service job under which it is registered to monit',
+    'trigger': 'the trigger method of backup on-demand/scheduled'
 }
 
 parameters_restore = {

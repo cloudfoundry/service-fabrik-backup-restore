@@ -24,10 +24,12 @@ class BaseClient:
             self.INSTANCE_ID = configuration['instance_id']
             self.SECRET = configuration['secret']
             self.JOB_NAME = configuration['job_name']
+            self.TRIGGER = configuration['trigger']
             self.tags = {
                 'created_by': 'service-fabrik-backup-restore',
                 'instance_id': self.INSTANCE_ID,
-                'job_name': self.JOB_NAME
+                'job_name': self.JOB_NAME,
+                'trigger': self.TRIGGER
                 }
         else:
             self.BLOB_PREFIX = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa' + str(time.time())
