@@ -89,6 +89,7 @@ python3 test_br.py                     \
   --instance_id=<vm-XXXX-XXXX>         \
   --container=<google-cloud-container> \
   --job_name=<name>                    \
+  --trigger=<on-demand/scheduled>      \
   --credentials="$credential_json"     \
   --projectId=<project id>             \
   --secret=<secret>
@@ -104,6 +105,7 @@ python3 backup.py                  \
   --secret=<secret>                \
   --container=<container>          \
   --job_name=<name>                \
+  --trigger=<on-demand/scheduled>  \
   --tenant_id=<tenant-id>          \
   --tenant_name=<tenant-name>      \
   --auth_url=<auth-url>            \
@@ -123,6 +125,7 @@ python3 test_br.py                     \
   --secret=xxxxxxxx                    \
   --container=<container>              \
   --job_name=<name>                    \
+  --trigger=<on-demand/scheduled>      \
   --access_key_id=<key>                \
   --secret_access_key=<accesskey>      \
   --region_name=<region>
@@ -139,6 +142,7 @@ python3 test_br.py                     \
   --secret=xxxxxxxx                    \
   --container=<container>              \
   --job_name=<name>                    \
+  --trigger=<on-demand/scheduled>      \
   --access_key_id=<key>                \
   --secret_access_key=<accesskey>      \
   --region_name=<region>               \
