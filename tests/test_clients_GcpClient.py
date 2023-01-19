@@ -28,6 +28,7 @@ configuration = {
     'instance_id': 'vm-id',
     'secret': 'xyz',
     'job_name': 'service-job-name',
+    'trigger' : 'on-demand-or-scheduled',
     'container': valid_container,
     'projectId': project_id,
     'credentials': '{ "type": "service_account", "project_id": "gcp-dev", "client_id": "123", "private_key_id": "2222",  "private_key": "-----BEGIN PRIVATE KEY-----\\nMIIEFatI0=\\n-----END PRIVATE KEY-----\\n", "client_email": "user@gcp-dev.com", "client_id": "6666", "auth_uri": "auth_uri", "token_uri": "token_uri", "auth_provider_x509_cert_url": "cert_url", "client_x509_cert_url": "cert_url"  }'
@@ -774,6 +775,7 @@ class TestGcpClient:
             'instance_id': 'vm-id',
             'secret': 'xyz',
             'job_name': 'service-job-name',
+            'trigger' : 'on-demand-or-scheduled',
             'container': valid_container,
             'projectId': project_id,
             'credhub_url': '/credhub',

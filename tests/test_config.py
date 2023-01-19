@@ -29,7 +29,8 @@ ops_parameters = {
         'instance_id': 'valid-instance-id',
         'secret': 'valid-secret',
         'container': 'valid-container-name',
-        'job_name': 'valid-job-name'
+        'job_name': 'valid-job-name',
+        'trigger' : 'on-demand-or-scheduled'
     },
     'restore': {
         'backup_guid': 'valid-backup-guid',
@@ -106,6 +107,7 @@ class TestConfig():
         assert configuration['secret'] == ops_parameters['backup']['secret']
         assert configuration['container'] == ops_parameters['backup']['container']
         assert configuration['job_name'] == ops_parameters['backup']['job_name']
+        assert configuration['trigger'] == ops_parameters['backup']['trigger']
 
     def test_build_parser_restore(self):
         #build the parser for restore
