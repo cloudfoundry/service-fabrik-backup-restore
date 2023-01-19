@@ -28,6 +28,7 @@ configuration = {
     'instance_id': 'vm-id',
     'secret': 'xyz',
     'job_name': 'service-job-name',
+    'trigger' : 'on-demand-or-scheduled',
     'container': valid_container,
     'projectId': project_id,
     'username': 'name',

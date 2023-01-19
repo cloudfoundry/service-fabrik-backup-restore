@@ -33,6 +33,7 @@ configuration = {
     'instance_id' : 'vm-id',
     'secret' : 'xyz',
     'job_name' : 'service-job-name',
+    'trigger' : 'on-demand-or-scheduled',
     'container' : valid_container,
     'access_key_id' : 'key-id',
     'secret_access_key' : 'secret-key',
